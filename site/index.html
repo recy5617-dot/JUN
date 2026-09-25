@@ -1781,6 +1781,7 @@ function drawMonster(cx, cy, m, now) {
 }
 
 let fxCache = '';
+let DBG = null; // 自動測試用:每一幀回報畫出的怪物
 function draw() {
   const g = Game.g;
   if (!g) return;
@@ -1800,7 +1801,13 @@ function draw() {
     const k = m.y * g.W + m.x;
     if (!monAt.has(k)) monAt.set(k, m);
   }
-  const lit = (x, y) => Math.max(Math.abs(x - g.p.x), Math.abs(y - g.p.y)) <= vis;
+  // 安全區本身是光源:照亮自己周圍一圈,碰到安全區的怪物一定看得到
+  const zoneLit = new Set();
+  for (const z of g.safes) {
+    if (!z.active || Math.abs(z.x - g.p.x) > R + 1 || Math.abs(z.y - g.p.y) > R + 1) continue;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) zoneLit.add((z.y + dy) * g.W + z.x + dx);
+  }
+  if (DBG) { DBG.drawn = []; DBG.vis = vis; DBG.R = R; }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#07080b';
   ctx.fillRect(0, 0, cv.width, cv.height);
@@ -1814,12 +1821,9 @@ function draw() {
     const cx = px + TILE / 2, cy = py + TILE / 2;
     const i = y * g.W + x, val = g.grid[i];
     const zone = g.safeAt.get(i);
-    if (ch > vis) {
-      // 安全區會發光,燈光範圍外也看得見
-      if (zone && zone.active) drawSafe(px, py, zone, now, false);
-      continue;
-    }
-    ctx.globalAlpha = ch < vis ? 1 : 0.6;
+    const byZone = ch > vis && zoneLit.has(i);
+    if (ch > vis && !byZone) continue;
+    ctx.globalAlpha = byZone ? 0.5 : (ch < vis ? 1 : 0.6);
     if (val === 1 || val === 2) {
       ctx.fillStyle = T[6]; ctx.fillRect(px, py, TILE, TILE);
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(px, py + TILE - 8, TILE, 8);
@@ -1845,36 +1849,15 @@ function draw() {
         ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.stroke();
         ctx.beginPath(); ctx.arc(cx, cy, 21, 0, Math.PI * 2); ctx.stroke();
       }
-      if (zone) drawSafe(px, py, zone, now, true);
+      if (zone) drawSafe(px, py, zone, now, !byZone);
       if (g.traps.has(i)) drawTrap(cx, cy);
       const it = g.items.get(i);
       if (it) drawItem(cx, cy, it, now);
       if (!g.hasKey && g.key.x === x && g.key.y === y) drawKey(cx, cy, 38 / 24, '#f2b544');
     }
     const m = monAt.get(i);
-    if (m) drawMonster(cx, cy, m, now);
+    if (m) { drawMonster(cx, cy, m, now); if (DBG) DBG.drawn.push({ m, x, y }); }
     ctx.globalAlpha = 1;
-  }
-  // 剛走出燈光的怪物:在最後看到的位置留下 1.5 秒漸淡的殘影
-  for (const m of g.mons) {
-    if (m.hidden) continue;
-    const shown = monAt.get(m.y * g.W + m.x) === m && lit(m.x, m.y);
-    if (shown) { m.seenX = m.x; m.seenY = m.y; m.seenAt = now; continue; }
-    if (!m.seenAt || now - m.seenAt > 1500) continue;
-    const vx = m.seenX - g.p.x, vy = m.seenY - g.p.y;
-    if (Math.abs(vx) > R || Math.abs(vy) > R) continue;
-    const f = 1 - (now - m.seenAt) / 1500;
-    const gx = (vx + R) * TILE + TILE / 2, gy = (vy + R) * TILE + TILE / 2;
-    ctx.save();
-    ctx.globalAlpha = 0.55 * f;
-    ctx.setLineDash([5, 5]);
-    ctx.strokeStyle = '#ff4d4d'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(gx, gy, 21, 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#ff8a8a'; ctx.font = '900 18px "Noto Serif TC", serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(m.glyph, gx, gy + 1);
-    ctx.restore();
   }
   // 玩家
   const pcx = R * TILE + TILE / 2, pcy = pcx;
