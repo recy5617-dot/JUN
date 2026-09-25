@@ -1360,17 +1360,31 @@ const Game = {
       const dz = Math.abs(m.x - zNow.x) + Math.abs(m.y - zNow.y);
       // 撞到安全區的護罩:閃一下並發出聲音,讓玩家看到怪物被擋住
       if (dz === 1 && (!zNow.bumpAt || now - zNow.bumpAt > 1500)) { zNow.bumpAt = now; Sound.play('block'); }
-      if (m.lostZone !== zNow) { m.lostZone = zNow; m.lostAt = now; }
-      if (m.type === 'phantom') return 900;
-      // 前 6 秒在安全區外徘徊等你出來(會留在燈光範圍內),之後才放棄離開
-      if (now - m.lostAt < 6000 && dz <= 3) {
-        this.wander(m, (x, y) => Math.abs(x - zNow.x) + Math.abs(y - zNow.y) <= 2);
-        return 700;
+      // 安全區會驅散怪物:先退到 6 格以外,之後只在遠處閒晃,不再靠近
+      if (m.type === 'phantom') {
+        // 幽影可以穿牆:往任何能拉開距離的方向飄走(靠近外牆時會改走旁邊)
+        if (dz < 6) {
+          const opts = DIRS.map(([dx, dy]) => ({ x: m.x + dx, y: m.y + dy }))
+            .filter(q => q.x >= 1 && q.y >= 1 && q.x <= g.W - 2 && q.y <= g.H - 2 && Math.abs(q.x - zNow.x) + Math.abs(q.y - zNow.y) > dz);
+          if (opts.length) { const o = opts[Math.floor(Math.random() * opts.length)]; this.moveTo(m, o.x, o.y); }
+        }
+        return 500;
       }
-      this.wander(m);
-      return 600;
+      const df = this.distFrom(zNow);
+      const cur = df[m.y * g.W + m.x];
+      if (cur >= 0 && cur < 6) {
+        const opts = [];
+        for (const [dx, dy] of DIRS) {
+          const nx = m.x + dx, ny = m.y + dy, ni = ny * g.W + nx;
+          if (g.mg[ni] === 0 && df[ni] > cur) opts.push([nx, ny]);
+        }
+        if (opts.length) { const o = opts[Math.floor(Math.random() * opts.length)]; this.moveTo(m, o[0], o[1]); }
+        else this.wander(m, (x, y) => df[y * g.W + x] >= cur);
+        return 330;
+      }
+      this.wander(m, (x, y) => df[y * g.W + x] < 0 || df[y * g.W + x] >= 6);
+      return 650;
     }
-    m.lostZone = null;
     switch (m.type) {
       case 'wisp':
         if (near(5)) this.chase(m); else this.wander(m);
@@ -1450,6 +1464,8 @@ const Game = {
         if (m.ei == null) m.ei = 0;
         const tr = g.trail;
         while (m.ei + 1 < tr.length && tr[m.ei + 1].t <= target) m.ei++;
+        const ez = g.safeAt.get(tr[m.ei].y * g.W + tr[m.ei].x);
+        if (ez && ez.active) return 50; // 回聲進不了安全區,停在外面
         this.moveTo(m, tr[m.ei].x, tr[m.ei].y);
         return 50;
       }
