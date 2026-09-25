@@ -81,8 +81,10 @@ window.runLevel = function (n) {
       for (const [m, x, y, hid] of before) {
         if (m.dead || hid || m.hidden || TELEPORT.has(m.type)) continue;
         if (Math.abs(m.x - x) + Math.abs(m.y - y) > 1) issues.realJump.push({ type: m.type, from: [x, y], to: [m.x, m.y] });
+        const pz = Game.safeZone();
+        if (pz && m.x === pz.x && m.y === pz.y) issues.stuckOnZone.push({ type: m.type });
         const zz = g.safeAt.get(m.y * g.W + m.x);
-        if (zz && zz.active && m.type !== 'echo') issues.stuckOnZone.push({ type: m.type });
+        if (zz && zz.active && !pz) issues.walkedThrough = (issues.walkedThrough || 0) + 1;
       }
       const s = !!Game.safeZone();
       if (s && !wasSafe) zoneEntries++;
@@ -114,7 +116,7 @@ window.runLevel = function (n) {
       n, win: g.over && g.p.x === g.door.x && g.p.y === g.door.y,
       secs: Math.round((FAKE - g.t0) / 1000), limit: g.limit / 1000,
       caught: 50 - g.lives, zoneEntries, itemsUsed,
-      invisible: issues.invisible.length, visJump: issues.visJump.length, realJump: issues.realJump.length, stuckOnZone: issues.stuckOnZone.length, nearZoneChecks: issues.nearZoneSeen || 0,
+      invisible: issues.invisible.length, visJump: issues.visJump.length, realJump: issues.realJump.length, stuckOnZone: issues.stuckOnZone.length, nearZoneChecks: issues.nearZoneSeen || 0, walkedThrough: issues.walkedThrough || 0,
       samples: [issues.invisible[0], issues.visJump[0], issues.realJump[0], issues.stuckOnZone[0]].filter(Boolean)
     };
     return res;

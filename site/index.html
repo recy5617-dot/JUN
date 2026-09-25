@@ -1044,11 +1044,13 @@ const Game = {
 
   say(msg, now, sfx) { this.g.msg = msg; this.g.msgUntil = now + 3500; if (sfx) Sound.play(sfx); },
 
-  // 怪物用的地圖:仍有效的安全區視同牆壁
+  // 怪物用的地圖:只有「玩家正躲在裡面」的安全區會擋住怪物,其他安全區怪物可以直接走過
   rebuildMG() {
     const g = this.g;
     g.mg = new Uint8Array(g.grid);
-    for (const z of g.safes) if (z.active) g.mg[z.y * g.W + z.x] = 1;
+    const z = this.safeZone();
+    g.mgZone = z;
+    if (z) g.mg[z.y * g.W + z.x] = 1;
     g.ver++;
     g.cache.clear();
     g.distP = bfs(g.mg, g.W, g.H, g.p.x, g.p.y);
@@ -1162,8 +1164,11 @@ const Game = {
       if (now < g.invUntil) this.say('護盾擋下了陷阱!', now, 'block');
       else { g.stuckUntil = now + TRAP_TIME; this.say('踩到陷阱!被困住 3 秒!', now, 'trap'); }
     }
-    g.distP = bfs(g.mg, g.W, g.H, g.p.x, g.p.y);
     const z = this.safeZone();
+    // 走進有怪物站著的安全區:護罩還來不及展開,照樣會被抓
+    if (z && g.mons.some(m => !m.hidden && now >= m.stunUntil && m.x === g.p.x && m.y === g.p.y)) this.checkHits(now, true);
+    if (g.over) return;
+    if (z !== g.mgZone) this.rebuildMG(); else g.distP = bfs(g.mg, g.W, g.H, g.p.x, g.p.y);
     if (z) this.say('進入安全區!怪物無法進來,力量剩 ' + Math.ceil(z.energy / 1000) + ' 秒。', now, 'safe');
     this.checkHits(now);
   },
@@ -1229,9 +1234,9 @@ const Game = {
     return null;
   },
 
-  checkHits(now) {
+  checkHits(now, ignoreSafe) {
     const g = this.g;
-    if (g.over || this.safeZone()) return;
+    if (g.over || (!ignoreSafe && this.safeZone())) return;
     for (const m of g.mons) {
       if (m.hidden || m.x !== g.p.x || m.y !== g.p.y) continue;
       if (now < m.stunUntil) continue;
@@ -1420,8 +1425,7 @@ const Game = {
         let nx = m.x, ny = m.y;
         if (Math.abs(dx) >= Math.abs(dy) && dx !== 0) nx += Math.sign(dx); else if (dy !== 0) ny += Math.sign(dy);
         nx = Math.max(1, Math.min(g.W - 2, nx)); ny = Math.max(1, Math.min(g.H - 2, ny));
-        const sz = g.safeAt.get(ny * g.W + nx);
-        if (!(sz && sz.active)) this.moveTo(m, nx, ny);
+        if (!(g.mgZone && g.mgZone.x === nx && g.mgZone.y === ny)) this.moveTo(m, nx, ny);
         return 900;
       }
       case 'blink':
@@ -1464,8 +1468,7 @@ const Game = {
         if (m.ei == null) m.ei = 0;
         const tr = g.trail;
         while (m.ei + 1 < tr.length && tr[m.ei + 1].t <= target) m.ei++;
-        const ez = g.safeAt.get(tr[m.ei].y * g.W + tr[m.ei].x);
-        if (ez && ez.active) return 50; // 回聲進不了安全區,停在外面
+        if (g.mgZone && g.mgZone.x === tr[m.ei].x && g.mgZone.y === tr[m.ei].y) return 50; // 回聲進不了你正在躲的安全區
         this.moveTo(m, tr[m.ei].x, tr[m.ei].y);
         return 50;
       }
@@ -1612,7 +1615,7 @@ const Game = {
           const back = tr[k];
           if (back && (back.x !== p.x || back.y !== p.y)) {
             g.p = { x: back.x, y: back.y };
-            g.distP = bfs(g.mg, g.W, g.H, back.x, back.y);
+            this.rebuildMG();
             this.say('回溯者把你拉回 5 秒前的位置!', now, 'teleport');
           }
         }
