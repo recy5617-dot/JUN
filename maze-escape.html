@@ -1354,12 +1354,23 @@ const Game = {
     const near = (r) => d >= 0 && d <= r;
     const el = now - g.t0;
     // 玩家躲在安全區時,怪物失去目標,只會在附近徘徊
-    if (m.type !== 'echo' && this.safeZone()) {
+    const zNow = m.type !== 'echo' ? this.safeZone() : null;
+    if (zNow) {
       if (m.type === 'berserk') m.st = 'roam';
+      const dz = Math.abs(m.x - zNow.x) + Math.abs(m.y - zNow.y);
+      // 撞到安全區的護罩:閃一下並發出聲音,讓玩家看到怪物被擋住
+      if (dz === 1 && (!zNow.bumpAt || now - zNow.bumpAt > 1500)) { zNow.bumpAt = now; Sound.play('block'); }
+      if (m.lostZone !== zNow) { m.lostZone = zNow; m.lostAt = now; }
       if (m.type === 'phantom') return 900;
+      // 前 6 秒在安全區外徘徊等你出來(會留在燈光範圍內),之後才放棄離開
+      if (now - m.lostAt < 6000 && dz <= 3) {
+        this.wander(m, (x, y) => Math.abs(x - zNow.x) + Math.abs(y - zNow.y) <= 2);
+        return 700;
+      }
       this.wander(m);
       return 600;
     }
+    m.lostZone = null;
     switch (m.type) {
       case 'wisp':
         if (near(5)) this.chase(m); else this.wander(m);
@@ -1680,6 +1691,12 @@ function drawSafe(px, py, z, now, lit) {
   ctx.strokeStyle = '#5fd0ff'; ctx.lineWidth = 3;
   rrect(px + 3, py + 3, 54, 54, 9); ctx.stroke();
   ctx.shadowBlur = 0;
+  if (z.bumpAt && now - z.bumpAt < 450) {
+    const f = (now - z.bumpAt) / 450;
+    ctx.strokeStyle = 'rgba(255,255,255,' + (1 - f) + ')'; ctx.lineWidth = 4;
+    rrect(px + 3 - 6 * f, py + 3 - 6 * f, 54 + 12 * f, 54 + 12 * f, 10); ctx.stroke();
+    ctx.strokeStyle = '#5fd0ff';
+  }
   ctx.lineWidth = 2.6; ctx.lineJoin = 'round';
   shieldPath(cx, cy - 3, 0.95); ctx.stroke();
   // 能量條
@@ -1767,6 +1784,7 @@ function draw() {
     const k = m.y * g.W + m.x;
     if (!monAt.has(k)) monAt.set(k, m);
   }
+  const lit = (x, y) => Math.max(Math.abs(x - g.p.x), Math.abs(y - g.p.y)) <= vis;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#07080b';
   ctx.fillRect(0, 0, cv.width, cv.height);
@@ -1820,6 +1838,27 @@ function draw() {
     const m = monAt.get(i);
     if (m) drawMonster(cx, cy, m, now);
     ctx.globalAlpha = 1;
+  }
+  // 剛走出燈光的怪物:在最後看到的位置留下 1.5 秒漸淡的殘影
+  for (const m of g.mons) {
+    if (m.hidden) continue;
+    const shown = monAt.get(m.y * g.W + m.x) === m && lit(m.x, m.y);
+    if (shown) { m.seenX = m.x; m.seenY = m.y; m.seenAt = now; continue; }
+    if (!m.seenAt || now - m.seenAt > 1500) continue;
+    const vx = m.seenX - g.p.x, vy = m.seenY - g.p.y;
+    if (Math.abs(vx) > R || Math.abs(vy) > R) continue;
+    const f = 1 - (now - m.seenAt) / 1500;
+    const gx = (vx + R) * TILE + TILE / 2, gy = (vy + R) * TILE + TILE / 2;
+    ctx.save();
+    ctx.globalAlpha = 0.55 * f;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = '#ff4d4d'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(gx, gy, 21, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ff8a8a'; ctx.font = '900 18px "Noto Serif TC", serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(m.glyph, gx, gy + 1);
+    ctx.restore();
   }
   // 玩家
   const pcx = R * TILE + TILE / 2, pcy = pcx;
