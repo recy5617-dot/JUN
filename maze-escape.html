@@ -35,6 +35,8 @@ button:disabled{cursor:default;opacity:.45}
 .mmsg.safe{background:#0d2632;color:#9fe3ff}
 .mh-fs{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
 .mh-fs .ic-exit,body.fs .mh-fs .ic-enter{display:none}
+.mh-fs .ic-off,body.muted .mh-fs .ic-on{display:none}
+body.muted .mh-fs .ic-off{display:block}
 body.fs .mh-fs .ic-exit{display:block}
 /* ---- 全螢幕模式 ---- */
 body.fs{overflow:hidden;overscroll-behavior:none}
@@ -178,6 +180,12 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
   .chips{gap:6px}
   .chip{padding:6px 10px;font-size:13px}
   .mh-name{display:none}
+  .mhud{gap:6px}
+  .mh-menu{padding:0 8px}
+  .mh-fs{width:32px}
+}
+@media (max-width:360px){
+  #mSafe{display:none}
 }
 </style>
 </head>
@@ -198,6 +206,8 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
       <span class="chip">第 11 關起有陷阱</span>
       <label class="chip"><input type="checkbox" id="compassToggle"> 顯示羅盤(簡單模式)</label>
       <label class="chip"><input type="checkbox" id="fsToggle"> 開始時自動全螢幕</label>
+      <label class="chip"><input type="checkbox" id="musicToggle"> 背景音樂</label>
+      <label class="chip"><input type="checkbox" id="sfxToggle"> 音效</label>
       <span class="chip gold" id="clearedChip">已通關 0 / 25</span>
     </div>
   </div>
@@ -231,6 +241,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
         <span class="mh-time" id="mTime">5:00</span>
         <span class="mh-key" id="mKey" aria-label="鑰匙"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M18 12v3.5M21 12v2.5"/></svg></span>
         <span class="tag safe" id="mSafe"></span>
+        <button class="mh-fs" id="sndBtn" aria-label="靜音"><svg class="ic-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><svg class="ic-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/></svg></button>
         <button class="mh-fs" id="fsBtn" aria-label="切換全螢幕"><svg class="ic-enter" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg><svg class="ic-exit" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button>
         <button class="mh-menu" id="mMenu">選單</button>
       </div>
@@ -275,6 +286,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
         <button class="btn gold" id="btnRestart">重新開始本關</button>
         <button class="btn" id="btnMenu">返回關卡選單</button>
         <button class="btn" id="btnFs">全螢幕模式</button>
+        <button class="btn" id="btnSnd">聲音:開</button>
       </div>
     </div>
   </div>
@@ -572,6 +584,248 @@ function buildLevel(n) {
   return { W, H, grid: g, mud, key, door, doorIn, spawns, safes, items, traps, theme: T };
 }
 
+// ---------------- 音樂與音效(Web Audio 即時合成,不需要音檔) ----------------
+// 每 5 關一種曲調:[低音根音 Hz, 每分鐘拍數]
+const MUSIC_TIERS = [[55.00, 68], [43.65, 74], [73.42, 80], [69.30, 88], [58.27, 96]];
+const MINOR = [0, 2, 3, 5, 7, 8, 10];
+const PROG = [[0, 2, 4], [5, 0, 2], [3, 5, 0], [4, 6, 1]]; // i – VI – iv – v
+// 怪物靠近時的不協和音程(依最近的怪物而不同)
+const DANGER_SETS = [[1, 16 / 15, 45 / 32], [1, 6 / 5, 64 / 45], [1, 9 / 8, 8 / 5], [1, 15 / 16, 4 / 3], [1, 17 / 16, 3 / 2]];
+
+const Sound = {
+  ctx: null, musicOn: true, sfxOn: true, muted: false,
+  danger: 0, dangerIdx: -1, playing: false,
+
+  init() {
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try { this.ctx = new AC(); } catch (e) { return; }
+    const c = this.ctx;
+    const comp = c.createDynamicsCompressor();
+    comp.threshold.value = -18; comp.ratio.value = 4;
+    comp.connect(c.destination);
+    this.master = c.createGain(); this.master.connect(comp);
+    this.musicBus = c.createGain(); this.musicBus.connect(this.master);
+    this.dangerBus = c.createGain(); this.dangerBus.gain.value = 0; this.dangerBus.connect(this.master);
+    this.sfxBus = c.createGain(); this.sfxBus.connect(this.master);
+    // 迴聲,讓音樂盒旋律有地窖的空間感
+    this.delay = c.createDelay(1); this.delay.delayTime.value = 0.38;
+    const fb = c.createGain(); fb.gain.value = 0.38;
+    const dl = c.createBiquadFilter(); dl.type = 'lowpass'; dl.frequency.value = 1800;
+    this.delay.connect(dl); dl.connect(fb); fb.connect(this.delay); dl.connect(this.musicBus);
+    const nb = c.sampleRate;
+    this.noiseBuf = c.createBuffer(1, nb, nb);
+    const d = this.noiseBuf.getChannelData(0);
+    for (let i = 0; i < nb; i++) d[i] = Math.random() * 2 - 1;
+    this.applyVolumes();
+    setInterval(() => this.schedule(), 90);
+    document.addEventListener('visibilitychange', () => {
+      if (!this.ctx) return;
+      if (document.hidden) this.ctx.suspend().catch(() => {}); else this.ctx.resume().catch(() => {});
+    });
+  },
+
+  applyVolumes() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.master.gain.setTargetAtTime(this.muted ? 0 : 0.9, t, 0.05);
+    this.musicBus.gain.setTargetAtTime(this.musicOn ? 0.55 * (1 - 0.45 * this.danger) : 0, t, 0.3);
+    this.dangerBus.gain.setTargetAtTime(this.musicOn ? 0.4 * this.danger : 0, t, 0.25);
+    this.sfxBus.gain.setTargetAtTime(this.sfxOn ? 0.8 : 0, t, 0.05);
+  },
+
+  // ---- 背景音樂 ----
+  startMusic(n) {
+    if (!this.ctx) return;
+    this.stopMusic();
+    const c = this.ctx, t = c.currentTime;
+    const [root, bpm] = MUSIC_TIERS[Math.min(MUSIC_TIERS.length - 1, Math.floor((n - 1) / 5))];
+    this.root = root; this.bpm = bpm;
+    this.nextT = t + 0.1; this.stepN = 0; this.hbT = t + 0.1;
+    const nodes = [];
+    // 低沉持續音
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380; lp.Q.value = 3;
+    const lfo = c.createOscillator(); lfo.frequency.value = 0.07;
+    const lfoG = c.createGain(); lfoG.gain.value = 160;
+    lfo.connect(lfoG); lfoG.connect(lp.frequency);
+    const dg = c.createGain(); dg.gain.value = 0; dg.gain.setTargetAtTime(0.2, t, 1.5);
+    lp.connect(dg); dg.connect(this.musicBus);
+    [[root, 'sawtooth', 0], [root * 1.5, 'sawtooth', 7], [root / 2, 'sine', 0]].forEach(([f, type, det]) => {
+      const o = c.createOscillator(); o.type = type; o.frequency.value = f; o.detune.value = det;
+      o.connect(lp); o.start(t); nodes.push(o);
+    });
+    lfo.start(t); nodes.push(lfo);
+    // 危險層:不協和的顫音弦樂,音量由怪物距離決定
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 1.4;
+    const trem = c.createGain(); trem.gain.value = 0.5;
+    const tl = c.createOscillator(); tl.frequency.value = 7;
+    const tlg = c.createGain(); tlg.gain.value = 0.5;
+    tl.connect(tlg); tlg.connect(trem.gain);
+    bp.connect(trem); trem.connect(this.dangerBus);
+    this.dangerOsc = [1, 2, 3].map(() => {
+      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = root * 8;
+      const g = c.createGain(); g.gain.value = 0.12;
+      o.connect(g); g.connect(bp); o.start(t); nodes.push(o);
+      return o;
+    });
+    tl.start(t); nodes.push(tl);
+    this.setDangerVoice(0);
+    this.musicNodes = { nodes, dg };
+    this.playing = true;
+  },
+
+  stopMusic() {
+    if (!this.ctx || !this.musicNodes) return;
+    const t = this.ctx.currentTime;
+    this.musicNodes.dg.gain.setTargetAtTime(0, t, 0.3);
+    this.musicNodes.nodes.forEach(o => { try { o.stop(t + 1.5); } catch (e) {} });
+    this.musicNodes = null;
+    this.playing = false;
+    this.setDanger(0, -1);
+  },
+
+  setDangerVoice(idx) {
+    const set = DANGER_SETS[((idx % DANGER_SETS.length) + DANGER_SETS.length) % DANGER_SETS.length];
+    const t = this.ctx.currentTime;
+    this.dangerOsc.forEach((o, k) => o.frequency.setTargetAtTime(this.root * 8 * set[k], t, 0.2));
+  },
+
+  // x: 0(安全)~1(貼身);idx:最近的怪物編號,決定危險音樂的音色
+  setDanger(x, idx) {
+    if (!this.ctx) return;
+    x = Math.max(0, Math.min(1, x));
+    if (Math.abs(x - this.danger) < 0.02 && idx === this.dangerIdx) return;
+    this.danger = x;
+    if (idx !== this.dangerIdx && idx >= 0 && this.dangerOsc && this.playing) this.setDangerVoice(idx);
+    this.dangerIdx = idx;
+    this.applyVolumes();
+  },
+
+  schedule() {
+    const c = this.ctx;
+    if (!c || !this.playing || c.state !== 'running') return;
+    const ahead = c.currentTime + 0.3;
+    if (this.nextT < c.currentTime) this.nextT = c.currentTime + 0.05;
+    while (this.nextT < ahead) {
+      this.musicStep(this.nextT, this.stepN);
+      this.nextT += 60 / this.bpm / 2;
+      this.stepN++;
+    }
+    if (this.hbT < c.currentTime) this.hbT = c.currentTime + 0.05;
+    while (this.hbT < ahead) {
+      if (this.danger > 0.08 && this.musicOn) this.heartbeat(this.hbT, this.danger);
+      this.hbT += 60 / (62 + 88 * this.danger);
+    }
+  },
+
+  noteFreq(deg, oct) {
+    const semi = MINOR[((deg % 7) + 7) % 7] + 12 * (oct + Math.floor(deg / 7));
+    return this.root * 4 * Math.pow(2, semi / 12);
+  },
+
+  musicStep(t, n) {
+    const chord = PROG[Math.floor(n / 16) % PROG.length];
+    if (n % 16 === 0) this.pluck(this.noteFreq(chord[0], -1), t, 0.22, 2.2, this.musicBus);
+    const busy = 0.55 - 0.25 * this.danger;
+    if (Math.random() < busy) {
+      const deg = chord[Math.floor(Math.random() * 3)];
+      this.pluck(this.noteFreq(deg, Math.random() < 0.3 ? 1 : 0), t, 0.1, 1.1, this.musicBus, true);
+    }
+    if (n % 32 === 24 && Math.random() < 0.6) this.pluck(this.noteFreq(chord[1], 2), t, 0.05, 2.5, this.musicBus, true);
+  },
+
+  pluck(f, t, vol, len, bus, echo) {
+    const c = this.ctx;
+    const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+    const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 2.01;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    const g2 = c.createGain(); g2.gain.value = 0.3;
+    o.connect(g); o2.connect(g2); g2.connect(g);
+    g.connect(bus);
+    if (echo) g.connect(this.delay);
+    o.start(t); o2.start(t); o.stop(t + len + 0.05); o2.stop(t + len + 0.05);
+  },
+
+  heartbeat(t, x) {
+    const vol = 0.25 + 0.55 * x;
+    [0, 0.16].forEach((off, k) => {
+      const c = this.ctx;
+      const o = c.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(k ? 70 : 85, t + off);
+      o.frequency.exponentialRampToValueAtTime(38, t + off + 0.18);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t + off);
+      g.gain.exponentialRampToValueAtTime(vol * (k ? 0.7 : 1), t + off + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.25);
+      o.connect(g); g.connect(this.master);
+      o.start(t + off); o.stop(t + off + 0.3);
+    });
+  },
+
+  // ---- 音效 ----
+  tone(f, dur, type, vol, when, slideTo) {
+    const c = this.ctx, t = c.currentTime + (when || 0);
+    const o = c.createOscillator(); o.type = type || 'sine';
+    o.frequency.setValueAtTime(f, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.sfxBus);
+    o.start(t); o.stop(t + dur + 0.05);
+  },
+  noise(dur, freq, vol, when, type) {
+    const c = this.ctx, t = c.currentTime + (when || 0);
+    const s = c.createBufferSource(); s.buffer = this.noiseBuf;
+    const f = c.createBiquadFilter(); f.type = type || 'lowpass'; f.frequency.value = freq;
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(this.sfxBus);
+    s.start(t); s.stop(t + dur + 0.05);
+  },
+
+  play(name) {
+    if (!this.ctx || !this.sfxOn || this.muted) return;
+    const T = (f, d, ty, v, w, s) => this.tone(f, d, ty, v, w, s);
+    const N = (d, f, v, w, ty) => this.noise(d, f, v, w, ty);
+    switch (name) {
+      case 'key': [880, 1175, 1568, 2093].forEach((f, i) => T(f, 0.5, 'triangle', 0.25, i * 0.08)); break;
+      case 'item': T(660, 0.15, 'square', 0.08); T(990, 0.3, 'square', 0.08, 0.08); break;
+      case 'time': T(400, 0.5, 'sine', 0.2, 0, 1600); T(1600, 0.4, 'triangle', 0.12, 0.45); break;
+      case 'heart': T(523, 0.25, 'triangle', 0.2); T(784, 0.45, 'triangle', 0.2, 0.12); break;
+      case 'lamp': N(0.4, 3000, 0.2, 0, 'bandpass'); T(1320, 0.6, 'sine', 0.15, 0.05); break;
+      case 'shield': T(200, 0.45, 'sawtooth', 0.12, 0, 900); T(1200, 0.6, 'sine', 0.1, 0.3); break;
+      case 'stun': T(1400, 0.25, 'square', 0.15, 0, 180); N(0.2, 4000, 0.15, 0, 'highpass'); break;
+      case 'teleport': T(300, 0.35, 'sine', 0.2, 0, 1800); T(1800, 0.35, 'sine', 0.12, 0.3, 400); break;
+      case 'trap': N(0.12, 2500, 0.5); T(130, 0.35, 'square', 0.25, 0, 45); break;
+      case 'block': T(900, 0.2, 'triangle', 0.2); N(0.1, 5000, 0.15, 0, 'highpass'); break;
+      case 'locked': T(110, 0.18, 'square', 0.15); T(98, 0.2, 'square', 0.15, 0.12); break;
+      case 'safe': T(1320, 1.2, 'sine', 0.18); T(1760, 1.2, 'sine', 0.1, 0.1); break;
+      case 'expire': T(990, 0.5, 'sine', 0.18, 0, 330); T(660, 0.6, 'sine', 0.12, 0.2, 220); break;
+      case 'steal': T(700, 0.12, 'square', 0.12); T(500, 0.12, 'square', 0.12, 0.1); T(350, 0.25, 'square', 0.12, 0.2); break;
+      case 'hurt': T(440, 0.3, 'sawtooth', 0.2, 0, 220); T(330, 0.4, 'sawtooth', 0.18, 0.2, 110); break;
+      case 'blink': T(600, 0.12, 'square', 0.12, 0, 2400); break;
+      case 'roar': N(0.6, 500, 0.4); T(90, 0.6, 'sawtooth', 0.25, 0, 60); break;
+      case 'crash': N(0.7, 900, 0.7); T(70, 0.5, 'sine', 0.4, 0, 35); break;
+      case 'dark': T(55, 1.8, 'sawtooth', 0.25, 0, 40); N(1.5, 300, 0.25); break;
+      case 'spot': T(311, 0.35, 'sawtooth', 0.12); T(330, 0.35, 'sawtooth', 0.12); T(466, 0.3, 'sawtooth', 0.08, 0.05); break;
+      case 'win': [523, 659, 784, 1047, 1319].forEach((f, i) => T(f, 0.9, 'triangle', 0.22, i * 0.11)); T(262, 1.6, 'sine', 0.2, 0.2); break;
+      case 'lose': T(440, 1.2, 'sawtooth', 0.22, 0, 90); T(466, 1.2, 'sawtooth', 0.18, 0, 95); N(0.8, 700, 0.35, 0.05); break;
+      case 'click': T(1200, 0.05, 'square', 0.06); break;
+    }
+  }
+};
+try {
+  Sound.musicOn = localStorage.getItem('maze-music') !== '0';
+  Sound.sfxOn = localStorage.getItem('maze-sfx') !== '0';
+} catch (e) {}
+
 // ---------------- 遊戲核心 ----------------
 const Game = {
   g: null,
@@ -601,10 +855,12 @@ const Game = {
     this.g = g;
     this.held = [];
     this.rebuildMG();
+    Sound.init();
+    Sound.startMusic(n);
     UI.showPlay(g);
   },
 
-  say(msg, now) { this.g.msg = msg; this.g.msgUntil = now + 3500; },
+  say(msg, now, sfx) { this.g.msg = msg; this.g.msgUntil = now + 3500; if (sfx) Sound.play(sfx); },
 
   // 怪物用的地圖:仍有效的安全區視同牆壁
   rebuildMG() {
@@ -636,6 +892,8 @@ const Game = {
       try { localStorage.setItem('maze-escape-cleared', JSON.stringify(this.cleared)); } catch (e) {}
     }
     this.held = [];
+    Sound.stopMusic();
+    Sound.play(win ? 'win' : 'lose');
     UI.showResult(win, reason, used, g.n);
   },
 
@@ -652,7 +910,7 @@ const Game = {
       if (z.energy <= 0) {
         z.energy = 0; z.active = false;
         this.rebuildMG();
-        this.say('這個安全區的力量耗盡了!快離開!', now);
+        this.say('這個安全區的力量耗盡了!快離開!', now, 'expire');
       }
     }
     const hk = this.held[this.held.length - 1];
@@ -661,6 +919,25 @@ const Game = {
       if (g.over) return;
       if (now >= m.next) { m.next = now + this.act(m, now); this.checkHits(now); }
     }
+    this.updateDanger(now);
+  },
+
+  // 最近的怪物越近,危險音樂越強;怪物剛進入 5 步內時發出警示音
+  updateDanger(now) {
+    const g = this.g;
+    let best = 99, idx = -1;
+    for (const m of g.mons) {
+      if (m.hidden || now < m.stunUntil) continue;
+      if (m.type === 'thief' && !g.hasKey) continue;
+      let d = g.distP[m.y * g.W + m.x];
+      if (d < 0) d = Math.round((Math.abs(m.x - g.p.x) + Math.abs(m.y - g.p.y)) * 1.2);
+      if (d <= 5 && !m.alerted && (!m.alertAt || now - m.alertAt > 8000)) { m.alerted = true; m.alertAt = now; Sound.play('spot'); }
+      if (d > 7) m.alerted = false;
+      if (d < best) { best = d; idx = MONS.findIndex(x => x.id === m.type); }
+    }
+    let x = best >= 9 ? 0 : (9 - best) / 8;
+    if (this.safeZone()) x *= 0.3;
+    Sound.setDanger(x, idx);
   },
 
   tryMove(d, now) {
@@ -674,7 +951,7 @@ const Game = {
     if (v === 1) { g.nextMove = now + 60; return; }
     if (v === 2) {
       if (g.hasKey) { g.p = { x: nx, y: ny }; this.end(true, '你用鑰匙打開大門,成功逃出迷宮!'); }
-      else { this.say('大門鎖著,先去找鑰匙!', now); g.nextMove = now + 200; }
+      else { this.say('大門鎖著,先去找鑰匙!', now, 'locked'); g.nextMove = now + 200; }
       return;
     }
     const ci = g.p.y * g.W + g.p.x;
@@ -693,25 +970,25 @@ const Game = {
     const i = g.p.y * g.W + g.p.x;
     g.lastMove = now;
     g.trail.push({ x: g.p.x, y: g.p.y, t: now });
-    if (!g.hasKey && g.p.x === g.key.x && g.p.y === g.key.y) { g.hasKey = true; this.say('拿到鑰匙了!快找出口大門!', now); }
+    if (!g.hasKey && g.p.x === g.key.x && g.p.y === g.key.y) { g.hasKey = true; this.say('拿到鑰匙了!快找出口大門!', now, 'key'); }
     const it = g.items.get(i);
     if (it) { g.items.delete(i); this.pickup(it, now); }
     if (g.traps.has(i)) {
       g.traps.delete(i);
-      if (now < g.invUntil) this.say('護盾擋下了陷阱!', now);
-      else { g.stuckUntil = now + TRAP_TIME; this.say('踩到陷阱!被困住 3 秒!', now); }
+      if (now < g.invUntil) this.say('護盾擋下了陷阱!', now, 'block');
+      else { g.stuckUntil = now + TRAP_TIME; this.say('踩到陷阱!被困住 3 秒!', now, 'trap'); }
     }
     g.distP = bfs(g.mg, g.W, g.H, g.p.x, g.p.y);
     const z = this.safeZone();
-    if (z) this.say('進入安全區!怪物無法進來,力量剩 ' + Math.ceil(z.energy / 1000) + ' 秒。', now);
+    if (z) this.say('進入安全區!怪物無法進來,力量剩 ' + Math.ceil(z.energy / 1000) + ' 秒。', now, 'safe');
     this.checkHits(now);
   },
 
   pickup(t, now) {
     const g = this.g, it = ITEMS[t];
-    if (t === 'hourglass') { g.bonus += 60000; this.say('撿到沙漏!時間 +1 分鐘', now); }
-    else if (t === 'heart') { g.lives++; this.say('撿到生命之心!增加 1 條命', now); }
-    else { g.inv[t]++; this.say('撿到「' + it.name + '」!按 ' + (USABLE.indexOf(t) + 1) + ' 或點下方按鈕使用', now); }
+    if (t === 'hourglass') { g.bonus += 60000; this.say('撿到沙漏!時間 +1 分鐘', now, 'time'); }
+    else if (t === 'heart') { g.lives++; this.say('撿到生命之心!增加 1 條命', now, 'heart'); }
+    else { g.inv[t]++; this.say('撿到「' + it.name + '」!按 ' + (USABLE.indexOf(t) + 1) + ' 或點下方按鈕使用', now, 'item'); }
   },
 
   useItem(t) {
@@ -720,11 +997,11 @@ const Game = {
     const now = Date.now();
     if (t === 'lamp') {
       g.lampUntil = Math.max(now, g.lampUntil) + 20000;
-      this.say('點燃燈油,視野 +3 格!', now);
+      this.say('點燃燈油,視野 +3 格!', now, 'lamp');
     } else if (t === 'shield') {
       g.invUntil = Math.max(now, g.invUntil) + 5000;
       g.stuckUntil = 0;
-      this.say('護盾展開,無敵 5 秒!', now);
+      this.say('護盾展開,無敵 5 秒!', now, 'shield');
     } else if (t === 'stun') {
       let best = null, bd = 1e9;
       for (const m of g.mons) {
@@ -734,14 +1011,14 @@ const Game = {
       }
       if (!best) { this.say('附近沒有怪物可以暈眩', now); return; }
       best.stunUntil = now + 10000;
-      this.say('「' + best.name + '」被暈眩 10 秒!', now);
+      this.say('「' + best.name + '」被暈眩 10 秒!', now, 'stun');
     } else if (t === 'scroll') {
       const spot = this.spotNearSafe();
       if (!spot) { this.say('找不到可以傳送的安全區', now); return; }
       g.p = spot;
       g.stuckUntil = 0;
       g.nextMove = now + 150;
-      this.say('傳送到安全區旁!', now);
+      this.say('傳送到安全區旁!', now, 'teleport');
       g.inv[t]--;
       this.enterCell(now);
       return;
@@ -779,7 +1056,7 @@ const Game = {
           g.hasKey = false;
           g.key = this.randFloor(10) || this.randFloor(0);
           m.until = now + 3000;
-          this.say('竊鑰賊搶走了鑰匙,藏到別處去了!', now);
+          this.say('竊鑰賊搶走了鑰匙,藏到別處去了!', now, 'steal');
         }
         continue;
       }
@@ -789,7 +1066,7 @@ const Game = {
         g.invUntil = now + 3000;
         g.stuckUntil = 0;
         m.stunUntil = now + 3000;
-        this.say('被「' + m.name + '」抓到,失去 1 條命!3 秒內無敵', now);
+        this.say('被「' + m.name + '」抓到,失去 1 條命!3 秒內無敵', now, 'hurt');
         continue;
       }
       this.end(false, '你被「' + m.name + '」抓到了!');
@@ -937,7 +1214,7 @@ const Game = {
         if (!m.nb) m.nb = now + 12000;
         if (now >= m.nb) {
           const c = this.cellsAtDist(5, 9);
-          if (c) { this.moveTo(m, c.x, c.y); this.say('閃現魔瞬移到你附近了!', now); }
+          if (c) { this.moveTo(m, c.x, c.y); this.say('閃現魔瞬移到你附近了!', now, 'blink'); }
           m.nb = now + 12000;
         } else if (near(4)) this.chase(m); else this.wander(m);
         return 600;
@@ -956,7 +1233,7 @@ const Game = {
           if (now >= m.until) { m.st = 'rest'; m.until = now + 2000; return 100; }
           this.chase(m); return 210;
         }
-        if (near(6)) { m.st = 'charge'; m.until = now + 3000; this.say('狂戰士發狂衝鋒!', now); this.chase(m); return 210; }
+        if (near(6)) { m.st = 'charge'; m.until = now + 3000; this.say('狂戰士發狂衝鋒!', now, 'roar'); this.chase(m); return 210; }
         this.wander(m);
         return 650;
       case 'flank': {
@@ -1035,7 +1312,7 @@ const Game = {
               g.grid[wy * g.W + wx] = 0; g.mg[wy * g.W + wx] = 0; g.ver++;
               g.distP = bfs(g.mg, g.W, g.H, p.x, p.y);
               this.moveTo(m, wx, wy);
-              this.say('牛頭魔王撞破了一面牆!', now);
+              this.say('牛頭魔王撞破了一面牆!', now, 'crash');
               m.nb = now + 15000;
               return 330;
             }
@@ -1077,7 +1354,7 @@ const Game = {
         if (bd <= 1) {
           best.active = false; best.energy = 0;
           this.rebuildMG();
-          this.say('噬光者吞噬了一個安全區!', now);
+          this.say('噬光者吞噬了一個安全區!', now, 'expire');
           return 900;
         }
         this.stepDown(m, this.distFrom(best));
@@ -1085,7 +1362,7 @@ const Game = {
       }
       case 'abyss': {
         if (!m.nd) m.nd = g.t0 + 20000;
-        if (now >= m.nd) { g.darkUntil = now + 6000; m.nd = now + 20000; this.say('深淵之王讓黑暗降臨,視野縮成 1 格!', now); }
+        if (now >= m.nd) { g.darkUntil = now + 6000; m.nd = now + 20000; this.say('深淵之王讓黑暗降臨,視野縮成 1 格!', now, 'dark'); }
         this.chase(m);
         return 320;
       }
@@ -1396,6 +1673,7 @@ const UI = {
   showMenu() {
     Game.g = null; Game.held = [];
     if (FS.on) FS.exit();
+    Sound.stopMusic();
     $('overlay').classList.remove('show');
     $('play').classList.add('hidden');
     $('menu').classList.remove('hidden');
@@ -1498,6 +1776,30 @@ $('fsToggle').checked = FS.auto();
 $('fsToggle').addEventListener('change', (e) => {
   try { localStorage.setItem('maze-fs', e.target.checked ? '1' : '0'); } catch (err) {}
 });
+
+// 聲音開關
+function syncSound() {
+  document.body.classList.toggle('muted', Sound.muted);
+  $('btnSnd').textContent = Sound.muted ? '聲音:關' : '聲音:開';
+  $('sndBtn').setAttribute('aria-label', Sound.muted ? '開啟聲音' : '靜音');
+  $('musicToggle').checked = Sound.musicOn;
+  $('sfxToggle').checked = Sound.sfxOn;
+  Sound.applyVolumes();
+}
+const toggleMute = () => { Sound.init(); Sound.muted = !Sound.muted; syncSound(); };
+$('sndBtn').addEventListener('click', toggleMute);
+$('btnSnd').addEventListener('click', toggleMute);
+$('musicToggle').addEventListener('change', (e) => {
+  Sound.musicOn = e.target.checked;
+  try { localStorage.setItem('maze-music', Sound.musicOn ? '1' : '0'); } catch (err) {}
+  syncSound();
+});
+$('sfxToggle').addEventListener('change', (e) => {
+  Sound.sfxOn = e.target.checked;
+  try { localStorage.setItem('maze-sfx', Sound.sfxOn ? '1' : '0'); } catch (err) {}
+  Sound.init(); syncSound(); Sound.play('item');
+});
+syncSound();
 
 // 背包按鈕與道具說明
 $('inv').innerHTML = USABLE.map((t, k) => {
