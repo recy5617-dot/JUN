@@ -2,7 +2,10 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>迷宮逃脫</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
@@ -13,7 +16,11 @@
   --serif:"Noto Serif TC",serif;--sans:"Noto Sans TC",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
+:root{color-scheme:dark}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.board,.board canvas{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.mhud,.mmsg{display:none}
 button{font-family:inherit;cursor:pointer}
 button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .wrap{max-width:1280px;margin:0 auto;padding:36px 40px}
@@ -100,10 +107,34 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
   .wrap{padding:24px 16px}
   h1{font-size:36px}
 }
+@media (max-width:1100px){
+  .mhud{display:flex;align-items:center;gap:10px;width:min(540px,100%)}
+  .mh-lvl{font-family:var(--serif);font-weight:900;font-size:22px;color:var(--amber)}
+  .mh-name{font-weight:700;font-size:15px;flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mh-time{font-family:var(--serif);font-weight:900;font-size:24px;color:var(--amber);font-variant-numeric:tabular-nums}
+  .mh-key{width:34px;height:34px;border-radius:50%;background:#262932;color:#6b6f7a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .mh-key.have{background:#3a2d0c;color:var(--amber)}
+  .mh-menu{height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:14px}
+  .mmsg{display:block;width:min(540px,100%);padding:8px 12px;border-radius:8px;background:var(--panel);color:var(--muted);font-size:14px;min-height:36px}
+  .mmsg.hot{background:#2a2210;color:#f5d58a}
+  .mmsg.safe{background:#0f2630;color:#9fe3ff}
+  .right .lvl,.right h2,.right .tags,.right .row,.right .msg{display:none}
+  .left{gap:10px}
+  .hint{display:none}
+  .ctrl{justify-content:center}
+  .dpad{grid-template-columns:repeat(3,64px);gap:8px}
+  .dpad button{height:64px;border-radius:12px}
+}
+@media (max-width:1100px) and (max-height:700px){
+  .dpad{grid-template-columns:repeat(3,54px)}
+  .dpad button{height:54px}
+}
 @media (max-width:560px){
-  .row{flex-direction:column}
-  .obj{width:auto}
-  .ctrl{flex-direction:column}
+  .grid5{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .card{min-height:96px;padding:10px 12px}
+  .chips{gap:6px}
+  .chip{padding:6px 10px;font-size:13px}
+  .mh-name{display:none}
 }
 </style>
 </head>
@@ -132,6 +163,15 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
 <section id="play" class="hidden">
   <div class="play">
     <div class="left">
+      <div class="mhud">
+        <span class="mh-lvl" id="mLvl">01</span>
+        <span class="mh-name" id="mName"></span>
+        <span class="mh-time" id="mTime">5:00</span>
+        <span class="mh-key" id="mKey" aria-label="鑰匙"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M18 12v3.5M21 12v2.5"/></svg></span>
+        <span class="tag safe" id="mSafe"></span>
+        <button class="mh-menu" id="mMenu">選單</button>
+      </div>
+      <div class="mmsg" id="mMsg"></div>
       <div class="board" id="board">
         <canvas id="cv" width="540" height="540" aria-label="迷宮畫面:用方向鍵或 WASD 移動"></canvas>
         <div class="fogtag" id="fogtag">迷霧籠罩:視野 1 格</div>
@@ -147,7 +187,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
         </div>
         <div class="hint">
           <span>用 <b>方向鍵 / WASD</b> 移動,按住可連續前進。</span>
-          <span>觸控裝置請按住左側方向鍵。按 <b>Esc</b> 返回選單。</span>
+          <span>手機:在迷宮上滑動,或按住方向鍵。按 <b>Esc</b> 返回選單。</span>
           <span>泥沼、蛛網會讓你變慢;怪物只在燈光範圍內可見。</span>
           <span>藍色<b style="color:#9fe3ff">安全區</b>在黑暗中也看得到:怪物進不來,但每個只能躲 12 秒。</span>
         </div>
@@ -948,6 +988,13 @@ function draw() {
   $('msg').classList.toggle('safe', !!sz);
   if (sz) $('msg').textContent = '安全區內:怪物無法靠近,也追丟了你的蹤跡(剩 ' + Math.ceil(sz.energy / 1000) + ' 秒)';
   const act = g.safes.filter(z => z.active).length;
+  $('mTime').textContent = fmt(left / 1000);
+  $('mTime').style.color = tc;
+  $('mKey').classList.toggle('have', g.hasKey);
+  $('mSafe').textContent = '安全區 ' + act;
+  $('mMsg').textContent = sz ? '安全區內,剩 ' + Math.ceil(sz.energy / 1000) + ' 秒' : (hot ? g.msg : (g.hasKey ? '鑰匙到手!找外牆上的大門' : '在迷宮上滑動或按方向鍵移動'));
+  $('mMsg').classList.toggle('hot', hot && !sz);
+  $('mMsg').classList.toggle('safe', !!sz);
   $('safeTag').textContent = '安全區 ' + act + ' / ' + g.safes.length;
   const cp = $('compass');
   if (Game.compass) {
@@ -998,6 +1045,9 @@ const UI = {
     const T = g.theme;
     $('lvlNum').textContent = '第 ' + pad2(g.n) + ' 關';
     $('themeName').textContent = T[0];
+    $('mLvl').textContent = pad2(g.n);
+    $('mName').textContent = T[0];
+    wakeLock();
     $('tags').innerHTML = '<span class="tag">' + g.W + ' × ' + g.H + ' 格</span><span class="tag">' + ALGO[T[1]] + '</span>' +
       (T[4] > 0 ? '<span class="tag mud">' + T[7] + ':移動減速</span>' : '') +
       '<span class="tag safe" id="safeTag"></span>';
@@ -1041,7 +1091,12 @@ window.addEventListener('blur', () => { Game.held = []; });
 document.querySelectorAll('.dpad button').forEach(b => {
   const k = b.dataset.k;
   const release = () => { Game.held = Game.held.filter(x => x !== k); };
-  b.addEventListener('pointerdown', (e) => { e.preventDefault(); if (!Game.held.includes(k)) Game.held.push(k); });
+  b.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (!Game.held.includes(k)) Game.held.push(k);
+    const now = Date.now();
+    if (Game.g && !Game.g.over && now >= Game.g.nextMove) Game.tryMove(KEYMAP[k], now);
+  });
   b.addEventListener('pointerup', release);
   b.addEventListener('pointerleave', release);
   b.addEventListener('pointercancel', release);
@@ -1050,6 +1105,43 @@ document.querySelectorAll('.dpad button').forEach(b => {
 
 $('btnRestart').addEventListener('click', () => { if (Game.g) Game.start(Game.g.n); });
 $('btnMenu').addEventListener('click', () => UI.showMenu());
+$('mMenu').addEventListener('click', () => UI.showMenu());
+
+// 在迷宮上滑動:手指往哪個方向拉,就持續往那邊走,放開停止
+let swipe = null;
+const setSwipe = (k) => {
+  if (swipe.k === k) return;
+  Game.held = Game.held.filter(x => x !== swipe.k);
+  swipe.k = k;
+  if (!k) return;
+  Game.held.push(k);
+  const now = Date.now();
+  if (Game.g && !Game.g.over && now >= Game.g.nextMove) Game.tryMove(KEYMAP[k], now);
+};
+cv.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  swipe = { x: e.clientX, y: e.clientY, k: null };
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+});
+cv.addEventListener('pointermove', (e) => {
+  if (!swipe) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  if (Math.hypot(dx, dy) < 18) { setSwipe(null); return; }
+  setSwipe(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft') : (dy > 0 ? 'ArrowDown' : 'ArrowUp'));
+});
+const endSwipe = () => { if (swipe) { setSwipe(null); swipe = null; } };
+cv.addEventListener('pointerup', endSwipe);
+cv.addEventListener('pointercancel', endSwipe);
+
+// 遊戲中保持螢幕常亮(不支援就略過)
+let lock = null;
+function wakeLock() {
+  try {
+    if (lock || !navigator.wakeLock) return;
+    navigator.wakeLock.request('screen').then(l => { lock = l; l.addEventListener('release', () => { lock = null; }); }).catch(() => {});
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Game.g) wakeLock(); });
 $('rRetry').addEventListener('click', () => { if (Game.g) Game.start(Game.g.n); });
 $('rNext').addEventListener('click', () => { if (Game.g && Game.g.n < 20) Game.start(Game.g.n + 1); });
 $('rMenu').addEventListener('click', () => UI.showMenu());
