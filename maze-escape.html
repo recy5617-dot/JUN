@@ -21,6 +21,9 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans
 button{font-family:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 button:disabled{cursor:default;opacity:.45}
+/* 遊戲畫面禁止選取文字,避免手機長按選字後卡住 */
+#play,#play *,.overlay .btns,.overlay .btns *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#play input,.overlay input{-webkit-user-select:text;user-select:text}
 .board,.board canvas{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .mhud,.mmsg{display:none}
 .mhud{align-items:center;gap:10px;width:min(540px,100%)}
@@ -155,6 +158,29 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
 .result h2{font-size:40px}
 .result p{margin:0}
 .hidden{display:none!important}
+.tip{padding:10px 14px;border-radius:10px;background:#1b1a14;border:1px solid #3a3320;color:#e9dcb4;font-size:14px;line-height:1.55}
+.tip b{color:var(--amber);margin-right:6px}
+.lb{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px;margin-bottom:22px}
+.lb h3{margin:0;font-family:var(--serif);font-weight:600;font-size:16px}
+.lb .box{display:flex;flex-direction:column;gap:10px}
+.lb-status{font-size:14px;color:var(--soft);line-height:1.6}
+.lb-status.warn{color:#f5d58a}
+.namerow{display:flex;gap:8px}
+.namerow input,.rname input{flex-grow:1;min-width:0;height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:#0f1116;color:var(--text);font-size:15px;font-family:inherit}
+.namerow input:focus,.rname input:focus{outline:2px solid var(--amber);outline-offset:1px}
+.lb-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.lb select{height:40px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:#0f1116;color:var(--text);font-size:14px;font-family:inherit}
+.lb table{width:100%;border-collapse:collapse;font-size:14px}
+.lb th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line)}
+.lb td{padding:7px 8px;border-bottom:1px solid #1f222a;font-variant-numeric:tabular-nums}
+.lb td.rk{width:44px;font-family:var(--serif);font-weight:900;color:var(--amber)}
+.lb td.tm{text-align:right;width:90px}
+.lb tr.me td{background:#221c0e}
+.lb .empty{color:var(--muted);font-size:14px;padding:12px 8px}
+.rboard{font-size:14px;color:var(--soft);line-height:1.6}
+.rboard b{color:var(--amber)}
+.rname{display:flex;gap:8px;width:100%}
+@media (max-width:1100px){.lb{grid-template-columns:1fr}}
 @media (max-width:1100px){
   .mhud{display:flex}
   .mmsg{display:block}
@@ -199,11 +225,12 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
       <p class="sub">提著燈籠走進黑暗:找到鑰匙、打開大門,在怪物追上你之前逃出去。</p>
     </div>
     <div class="chips">
-      <span class="chip">每關限時 5:00</span>
+      <span class="chip">限時 5 分鐘起,每 5 關 +3 分鐘</span>
       <span class="chip">視野只有 2 格</span>
       <span class="chip">每 5 關怪物 +1</span>
       <span class="chip">第 6 關起有道具</span>
       <span class="chip">第 11 關起有陷阱</span>
+      <span class="chip">第 25 關起鑰匙藏在密室</span>
       <label class="chip"><input type="checkbox" id="compassToggle"> 顯示羅盤(簡單模式)</label>
       <label class="chip"><input type="checkbox" id="fsToggle"> 開始時自動全螢幕</label>
       <label class="chip"><input type="checkbox" id="musicToggle"> 背景音樂</label>
@@ -227,6 +254,25 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
     <div class="box">
       <h3>道具(依本關怪物配置)</h3>
       <div class="lg-row" id="itemLegend"></div>
+    </div>
+  </div>
+  <div class="lb" id="leaderboard">
+    <div class="box">
+      <h3>玩家</h3>
+      <div class="lb-status" id="lbStatus">正在連線排行榜…</div>
+      <form class="namerow" id="nameForm">
+        <label for="nickInput" class="hidden">玩家名稱</label>
+        <input id="nickInput" maxlength="12" placeholder="輸入你的名稱(最多 12 字)" autocomplete="nickname">
+        <button class="btn gold" type="submit" id="nickSave">儲存名稱</button>
+      </form>
+    </div>
+    <div class="box">
+      <div class="lb-head">
+        <h3>排行榜</h3>
+        <label for="lbSelect" class="hidden">排行榜類型</label>
+        <select id="lbSelect"></select>
+      </div>
+      <div id="lbTable"></div>
     </div>
   </div>
   <div id="tiers"></div>
@@ -280,6 +326,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
         </div>
       </div>
       <div class="msg" id="msg"></div>
+      <div class="tip" id="tipBox"></div>
       <div class="roster-h"><b>本關怪物</b><span id="monCount"></span></div>
       <div class="roster" id="roster"></div>
       <div class="btns">
@@ -298,6 +345,13 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
     <h2 id="rTitle"></h2>
     <p id="rReason" style="font-size:15px;color:var(--soft);line-height:1.6"></p>
     <p id="rTime" style="font-size:14px;color:var(--muted)"></p>
+    <div class="rboard" id="rBoard"></div>
+    <form class="rname hidden" id="rNameForm">
+      <label for="rNick" class="hidden">玩家名稱</label>
+      <input id="rNick" maxlength="12" placeholder="輸入名稱來記錄成績">
+      <button class="btn gold" type="submit">記錄</button>
+    </form>
+    <div class="tip hidden" id="rTip"></div>
     <div class="btns" style="margin-top:8px;justify-content:center">
       <button class="btn solid" id="rNext">下一關</button>
       <button class="btn gold" id="rRetry">再試一次</button>
@@ -310,8 +364,10 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
 'use strict';
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const KEYMAP = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0], W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0] };
-const LEVELS = 25;
-const TIME_LIMIT = 300000;
+const LEVELS = 30;
+const VAULT_FROM = 25; // 第 25 關起鑰匙藏在小密室
+// 每關限時:5 分鐘起,每 5 關 +3 分鐘
+function timeLimit(n) { return (5 + 3 * Math.floor((n - 1) / 5)) * 60000; }
 const SAFE_TIME = 12000;
 const ITEM_FROM = 6;   // 第 6 關起有道具
 const TRAP_FROM = 11;  // 第 11 關起有陷阱
@@ -344,7 +400,12 @@ const THEMES = [
   ['鎖鏈監牢', 'dfs', 0.2, 4, 0, '#4f4a45', '#1e1b19', ''],
   ['蝙蝠洞穴', 'kruskal', 0.3, 2, 0.05, '#3d3530', '#17110e', '滴水'],
   ['無光廢墟', 'grow', 0.25, 5, 0.04, '#3f3a3a', '#141111', '碎石'],
-  ['深淵王座', 'dfs', 0.35, 7, 0.04, '#43223a', '#170712', '黑沼']
+  ['深淵王座', 'dfs', 0.35, 7, 0.04, '#43223a', '#170712', '黑沼'],
+  ['分身鏡廳', 'prim', 0.25, 5, 0, '#4a4f63', '#1a1c2a', ''],
+  ['重力深井', 'kruskal', 0.3, 4, 0.05, '#3b4148', '#121519', '泥漿'],
+  ['時之迴廊', 'dfs', 0.3, 4, 0, '#51483a', '#211b12', ''],
+  ['冰封王城', 'grow', 0.3, 5, 0.05, '#50667a', '#18222c', '薄冰'],
+  ['迷宮核心', 'dfs', 0.4, 8, 0.04, '#4a2438', '#15060f', '熔漿']
 ];
 const ALGO = { dfs: '深度優先 · 長走廊', prim: 'Prim · 多岔路', kruskal: 'Kruskal · 均勻分岔', grow: '生長樹 · 混合型' };
 
@@ -386,7 +447,48 @@ const MONS = [
   { id: 'trapper', name: '陷阱師', glyph: '陷', color: '#c8b27a', ink: '#221a06', ai: '佈陷', counter: 'scroll', desc: '一路追你,每 7 秒在腳下佈下新陷阱。' },
   { id: 'swarm', name: '蝠群', glyph: '蝠', color: '#a58fa0', ink: '#1c1219', ai: '亂飛', counter: 'shield', desc: '極快但飛行路線雜亂,一半時間在亂竄。' },
   { id: 'devour', name: '噬光者', glyph: '噬', color: '#7fa0a8', ink: '#0c1618', ai: '吞噬', counter: 'hourglass', desc: '專門吞掉安全區,讓你無處可躲。' },
-  { id: 'abyss', name: '深淵之王', glyph: '淵', color: '#d05cff', ink: '#1a0524', ai: '黑暗', counter: 'lamp', desc: '高速追擊,每 20 秒讓黑暗降臨,視野縮成 1 格。' }
+  { id: 'abyss', name: '深淵之王', glyph: '淵', color: '#d05cff', ink: '#1a0524', ai: '黑暗', counter: 'lamp', desc: '高速追擊,每 20 秒讓黑暗降臨,視野縮成 1 格。' },
+  { id: 'clone', name: '影分身', glyph: '分', color: '#8f9bd6', ink: '#0f1330', ai: '分身', counter: 'shield', desc: '每 20 秒召喚一個分身,分身追你 10 秒後消失。' },
+  { id: 'gravity', name: '重力魔', glyph: '重', color: '#8a7fb0', ink: '#140f24', ai: '重力', counter: 'scroll', desc: '靠近 5 格內時,你的移動速度被拖慢一半。' },
+  { id: 'rewind', name: '回溯者', glyph: '溯', color: '#d8c38a', ink: '#221b08', ai: '回溯', counter: 'hourglass', desc: '每 30 秒把附近的你拉回 5 秒前的位置。' },
+  { id: 'frost', name: '冰霜巨人', glyph: '霜', color: '#bfe6f5', ink: '#0a1f29', ai: '冰凍', counter: 'shield', desc: '行動緩慢,但貼近時會把你凍住 1.5 秒。' },
+  { id: 'core', name: '迷宮之心', glyph: '核', color: '#ff7ab8', ink: '#2a0717', ai: '守護', counter: 'stun', desc: '最終頭目:會瞬移到鑰匙或大門旁守候,靠近就高速追擊。' }
+];
+// 分身召喚出來的暫時怪物
+const CLONELING = { id: 'cloneling', name: '分身', glyph: '分', color: '#c3cbf2', ink: '#0f1330', ai: '分身', counter: 'shield', desc: '' };
+
+// 每一關的闖關提示
+const TIPS = [
+  '遊魂只在 5 格內才會追你,看到紅圈就繞路,也可以先躲進藍色安全區。',
+  '石魔走得很慢,只要一直移動就甩得掉它。',
+  '巡夜人會在各處巡邏,聽到警示音時先躲進附近的安全區。',
+  '伏擊者會跑到你「前方」埋伏,常常轉彎改變方向能讓它撲空。',
+  '獵犬沿著你的足跡追,繞一圈迴路或躲進安全區可以甩掉它。',
+  '從這關開始有道具!幽影會穿牆但很慢,別待在死路裡太久。',
+  '閃現魔每 12 秒瞬移到你附近,聽到瞬移音效就換方向;褐色泥沼會拖慢你。',
+  '守門人守著鑰匙,先用暈眩彈讓它暈 10 秒再進去拿。',
+  '狂戰士衝鋒 3 秒後會喘 2 秒,等它停下來再從旁邊溜過。',
+  '夾擊者會和同伴包夾你,別讓兩隻怪物分別堵在你前後。',
+  '從這關開始有陷阱!回聲會重走你 8 秒前的路,不要在同一個地方停太久。',
+  '先知會在你前往目標的半路攔截,故意繞遠路可以騙過它。',
+  '石像鬼只在你停下時移動,一直走就安全,別在十字路口發呆。',
+  '織網蛛的白色蛛網會讓你變慢,看到網格就繞開。',
+  '暗影幾乎隱形,點燃燈油就看得見它;心跳聲變快時要特別小心。',
+  '迷霧妖靠近時視野只剩 1 格,燈油可以抵銷迷霧。',
+  '鐘擺怪忽快忽慢,趁它變慢的時候拉開距離。',
+  '拿到鑰匙後竊鑰賊會追過來,開啟護盾它就偷不走。',
+  '獵王會越跑越快,這關要速戰速決,撿到沙漏能多 1 分鐘。',
+  '牛頭魔王會撞破牆直衝過來,死路不再安全,先記好安全區的位置。',
+  '鏡像魔在迷宮另一側模仿你,走到中線附近時要特別小心。',
+  '陷阱師一路佈下陷阱,盡量不要走回頭路。',
+  '蝠群又快又亂飛,真的被堵住時就開護盾硬闖。',
+  '噬光者會吃掉安全區,需要躲的時候要趁早用。',
+  '從這關開始鑰匙藏在小密室裡,密室只有一個入口,進去前先確認身後沒有怪物。',
+  '影分身每 20 秒召喚分身,分身 10 秒後就消失,先躲一下再繼續走。',
+  '重力魔 5 格內會拖慢你,保持距離,或用傳送卷軸脫身。',
+  '回溯者會把你拉回 5 秒前的位置,拿到鑰匙後盡快遠離它。',
+  '冰霜巨人貼近時會凍住你 1.5 秒,護盾可以擋下冰凍。',
+  '最終關!迷宮之心會瞬移到鑰匙或大門旁守候,帶著暈眩彈再靠近。'
 ];
 
 function rng(seed) {
@@ -515,32 +617,91 @@ function buildLevel(n) {
       }
     }
   }
+  // 小密室(第 25 關起):5×5 圍牆包住 3×3 房間,只有一個入口,鑰匙藏在其中一間
+  const vaults = [];
+  const protect = new Set();
+  const vaultFloor = new Set();
+  if (n >= VAULT_FROM) {
+    const want = n === VAULT_FROM ? 2 : 3;
+    const cands = [];
+    for (let y = 3; y <= H - 4; y += 2) for (let x = 3; x <= W - 4; x += 2) if (x + y > 14) cands.push({ x, y });
+    for (let k = 0; k < want; k++) {
+      let best = null, bs = -1;
+      for (const c of cands) {
+        if (vaults.some(v => Math.max(Math.abs(v.x - c.x), Math.abs(v.y - c.y)) < 7)) continue;
+        let md = Math.abs(c.x - 1) + Math.abs(c.y - 1);
+        for (const v of vaults) md = Math.min(md, Math.abs(v.x - c.x) + Math.abs(v.y - c.y));
+        const sc = md + r() * 8;
+        if (sc > bs) { bs = sc; best = c; }
+      }
+      if (!best) break;
+      vaults.push(best);
+    }
+    for (const v of vaults) {
+      for (let y = v.y - 2; y <= v.y + 2; y++) for (let x = v.x - 2; x <= v.x + 2; x++) {
+        const edge = Math.abs(x - v.x) === 2 || Math.abs(y - v.y) === 2;
+        g[I(x, y)] = edge ? 1 : 0;
+        protect.add(I(x, y));
+        if (!edge) vaultFloor.add(I(x, y));
+      }
+      // 入口朝向起點那一側(偶爾換邊)
+      const sides = DIRS.filter(([dx, dy]) => inner(v.x + dx * 3, v.y + dy * 3));
+      sides.sort((a, b) => (Math.abs(v.x + a[0] * 3 - 1) + Math.abs(v.y + a[1] * 3 - 1)) - (Math.abs(v.x + b[0] * 3 - 1) + Math.abs(v.y + b[1] * 3 - 1)));
+      const [dx, dy] = sides[r() < 0.7 ? 0 : Math.min(1, sides.length - 1)];
+      g[I(v.x + dx * 2, v.y + dy * 2)] = 0;
+      g[I(v.x + dx * 3, v.y + dy * 3)] = 0;
+      vaultFloor.add(I(v.x + dx * 2, v.y + dy * 2));
+    }
+    // 圍牆可能切斷原本的走廊:把被切開的區域重新接回來
+    for (let guard = 0; guard < 400; guard++) {
+      const dd = bfs(g, W, H, 1, 1);
+      let fixed = false;
+      for (let i = 0; i < W * H && !fixed; i++) {
+        if (g[i] !== 1 || protect.has(i)) continue;
+        const x = i % W, y = (i - x) / W;
+        if (!inner(x, y)) continue;
+        for (const [dx, dy] of [[1, 0], [0, 1]]) {
+          const a = I(x - dx, y - dy), b = I(x + dx, y + dy);
+          if (g[a] === 0 && g[b] === 0 && ((dd[a] >= 0) !== (dd[b] >= 0))) { g[i] = 0; fixed = true; break; }
+        }
+      }
+      if (!fixed) break;
+    }
+  }
   const mud = new Uint8Array(W * H);
-  if (T[4] > 0) for (let i = 0; i < W * H; i++) if (g[i] === 0 && i !== I(1, 1) && r() < T[4]) mud[i] = 1;
+  if (T[4] > 0) for (let i = 0; i < W * H; i++) if (g[i] === 0 && i !== I(1, 1) && !protect.has(i) && r() < T[4]) mud[i] = 1;
   const ds = bfs(g, W, H, 1, 1);
   const floors = [];
   let maxD = 0;
   for (let i = 0; i < W * H; i++) if (ds[i] > 0) { floors.push(i); if (ds[i] > maxD) maxD = ds[i]; }
-  const far = floors.filter(i => ds[i] >= maxD * 0.8);
-  const ki = far[Math.floor(r() * far.length)];
+  let ki;
+  if (vaults.length) {
+    let kv = vaults[0];
+    for (const v of vaults) if (ds[I(v.x, v.y)] > ds[I(kv.x, kv.y)]) kv = v;
+    ki = I(kv.x, kv.y);
+    kv.hasKey = true;
+  } else {
+    const far = floors.filter(i => ds[i] >= maxD * 0.8);
+    ki = far[Math.floor(r() * far.length)];
+  }
   const key = { x: ki % W, y: Math.floor(ki / W) };
   const dk = bfs(g, W, H, key.x, key.y);
   let best = -1, door = null, doorIn = null;
   for (let x = 1; x < W - 1; x++) for (const y of [0, H - 1]) {
     const iy = y === 0 ? 1 : H - 2; const ii = I(x, iy);
-    if (g[ii] !== 0) continue;
+    if (g[ii] !== 0 || ds[ii] < maxD * 0.3) continue;
     const sc = dk[ii] + 0.6 * ds[ii] + r() * 3;
     if (sc > best) { best = sc; door = { x, y }; doorIn = { x, y: iy }; }
   }
   for (let y = 1; y < H - 1; y++) for (const x of [0, W - 1]) {
     const ix = x === 0 ? 1 : W - 2; const ii = I(ix, y);
-    if (g[ii] !== 0) continue;
+    if (g[ii] !== 0 || ds[ii] < maxD * 0.3) continue;
     const sc = dk[ii] + 0.6 * ds[ii] + r() * 3;
     if (sc > best) { best = sc; door = { x, y }; doorIn = { x: ix, y }; }
   }
   g[I(door.x, door.y)] = 2;
   const lu = lineup(n);
-  let cand = floors.filter(i => ds[i] >= Math.max(8, maxD * 0.45) && i !== ki);
+  let cand = floors.filter(i => ds[i] >= Math.max(8, maxD * 0.45) && i !== ki && !protect.has(i));
   if (cand.length < lu.length) cand = floors.filter(i => ds[i] >= 4);
   const spawns = lu.map(mi => {
     if (MONS[mi].id === 'echo') return { m: mi, x: 1, y: 1 };
@@ -550,6 +711,7 @@ function buildLevel(n) {
   });
   const taken = new Set(spawns.map(s => I(s.x, s.y)));
   taken.add(ki); taken.add(I(doorIn.x, doorIn.y)); taken.add(I(1, 1));
+  for (const i of protect) taken.add(i);
   const start = { x: 1, y: 1 };
 
   // 安全區
@@ -563,6 +725,8 @@ function buildLevel(n) {
     for (const mi of lu) { kinds.push(MONS[mi].counter); kinds.push(ITEM_KEYS[Math.floor(r() * ITEM_KEYS.length)]); }
     const pts = spread(W, floors.filter(i => ds[i] >= 3 && !taken.has(i)), kinds.length, [start].concat(safes), r);
     pts.forEach((p, k) => { items.push({ x: p.x, y: p.y, type: kinds[k] }); taken.add(I(p.x, p.y)); });
+    // 沒有鑰匙的密室裡放一個道具當作誘餌
+    for (const v of vaults) if (!v.hasKey) items.push({ x: v.x, y: v.y, type: ITEM_KEYS[Math.floor(r() * ITEM_KEYS.length)] });
   }
 
   // 陷阱:放在走廊上
@@ -581,7 +745,7 @@ function buildLevel(n) {
       traps.push(ci);
     }
   }
-  return { W, H, grid: g, mud, key, door, doorIn, spawns, safes, items, traps, theme: T };
+  return { W, H, grid: g, mud, key, door, doorIn, spawns, safes, items, traps, vaultFloor, theme: T };
 }
 
 // ---------------- 音樂與音效(Web Audio 即時合成,不需要音檔) ----------------
@@ -851,6 +1015,7 @@ const Game = {
     g.safeAt = new Map(g.safes.map(z => [z.y * g.W + z.x, z]));
     g.items = new Map(L.items.map(it => [it.y * g.W + it.x, it.type]));
     g.traps = new Set(L.traps);
+    g.limit = timeLimit(n);
     g.lastTick = now;
     this.g = g;
     this.held = [];
@@ -878,7 +1043,7 @@ const Game = {
   },
   timeLeft(now) {
     const g = this.g;
-    return Math.max(0, TIME_LIMIT + g.bonus - ((g.over ? g.endAt : now) - g.t0));
+    return Math.max(0, g.limit + g.bonus - ((g.over ? g.endAt : now) - g.t0));
   },
 
   end(win, reason) {
@@ -919,6 +1084,7 @@ const Game = {
       if (g.over) return;
       if (now >= m.next) { m.next = now + this.act(m, now); this.checkHits(now); }
     }
+    if (g.mons.some(m => m.dead)) g.mons = g.mons.filter(m => !m.dead);
     this.updateDanger(now);
   },
 
@@ -959,6 +1125,7 @@ const Game = {
     if (g.mud[ci]) cost *= 1.8;
     const w = g.webs.get(ci);
     if (w && w > now) cost *= 2.4;
+    if (this.gravityNear(now)) cost *= 2;
     g.p = { x: nx, y: ny };
     g.nextMove = now + cost;
     this.enterCell(now);
@@ -1072,6 +1239,11 @@ const Game = {
       this.end(false, '你被「' + m.name + '」抓到了!');
       return;
     }
+  },
+
+  gravityNear(now) {
+    const g = this.g;
+    return g.mons.some(m => m.type === 'gravity' && now >= m.stunUntil && Math.abs(m.x - g.p.x) + Math.abs(m.y - g.p.y) <= 5);
   },
 
   // ---- 移動工具 ----
@@ -1366,6 +1538,67 @@ const Game = {
         this.chase(m);
         return 320;
       }
+      case 'clone': {
+        if (!m.nc) m.nc = g.t0 + 20000;
+        if (now >= m.nc) {
+          m.nc = now + 20000;
+          const spot = DIRS.map(([dx, dy]) => ({ x: m.x + dx, y: m.y + dy })).find(q => g.mg[q.y * g.W + q.x] === 0);
+          if (spot) {
+            g.mons.push(Object.assign({}, CLONELING, { type: 'cloneling', x: spot.x, y: spot.y, px: spot.x, py: spot.y, next: now + 400, stunUntil: 0, hidden: false, expire: now + 10000 }));
+            this.say('影分身召喚了分身!', now, 'blink');
+          }
+        }
+        if (near(8)) this.chase(m); else this.wander(m);
+        return 440;
+      }
+      case 'cloneling':
+        if (now >= m.expire) { m.dead = true; m.hidden = true; return 1000; }
+        this.chase(m);
+        return 380;
+      case 'gravity':
+        this.chase(m);
+        return 500;
+      case 'rewind': {
+        if (!m.nr) m.nr = g.t0 + 30000;
+        if (now >= m.nr && near(12)) {
+          m.nr = now + 30000;
+          const tr = g.trail;
+          let k = tr.length - 1;
+          while (k > 0 && tr[k].t > now - 5000) k--;
+          const back = tr[k];
+          if (back && (back.x !== p.x || back.y !== p.y)) {
+            g.p = { x: back.x, y: back.y };
+            g.distP = bfs(g.mg, g.W, g.H, back.x, back.y);
+            this.say('回溯者把你拉回 5 秒前的位置!', now, 'teleport');
+          }
+        }
+        if (near(10)) this.chase(m); else this.wander(m);
+        return 520;
+      }
+      case 'frost':
+        if (d >= 0 && d <= 2 && (!m.nf || now >= m.nf) && now >= g.invUntil) {
+          m.nf = now + 8000;
+          g.stuckUntil = Math.max(g.stuckUntil, now + 1500);
+          this.say('冰霜巨人凍住了你!', now, 'trap');
+        }
+        this.chase(m);
+        return 620;
+      case 'core': {
+        if (near(7)) { this.chase(m); return 290; }
+        if (!m.nt) m.nt = g.t0 + 25000;
+        const obj = g.hasKey ? g.doorIn : g.key;
+        if (now >= m.nt) {
+          m.nt = now + 25000;
+          const spot = this.nearestFloor(obj.x + (Math.random() < 0.5 ? 2 : -2), obj.y + (Math.random() < 0.5 ? 2 : -2));
+          if (Math.abs(spot.x - p.x) + Math.abs(spot.y - p.y) > 4) {
+            this.moveTo(m, spot.x, spot.y);
+            this.say('迷宮之心瞬移到' + (g.hasKey ? '大門' : '鑰匙') + '附近守候!', now, 'blink');
+            return 600;
+          }
+        }
+        if (!this.toward(m, obj.x, obj.y)) this.wander(m);
+        return 420;
+      }
     }
     return 500;
   }
@@ -1546,6 +1779,10 @@ function draw() {
       }
     } else {
       ctx.fillStyle = T[5]; ctx.fillRect(px, py, TILE, TILE);
+      if (g.vaultFloor.has(i)) {
+        ctx.fillStyle = 'rgba(242,181,68,0.16)'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(242,181,68,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(px + 4, py + 4, TILE - 8, TILE - 8);
+      }
       if (g.mud[i]) { ctx.fillStyle = 'rgba(78,58,32,0.8)'; ctx.beginPath(); ctx.ellipse(cx, cy, 20, 16, 0, 0, Math.PI * 2); ctx.fill(); }
       const w = g.webs.get(i);
       if (w && w > now) {
@@ -1594,6 +1831,7 @@ function draw() {
   if (lamp) fx.push('<span style="color:#ffd35c">視野 +3 · ' + Math.ceil((g.lampUntil - now) / 1000) + ' 秒</span>');
   if (inv) fx.push('<span style="color:#7ff0c8">無敵 · ' + Math.ceil((g.invUntil - now) / 1000) + ' 秒</span>');
   if (stuck) fx.push('<span style="color:#e5c38e">被陷阱困住 · ' + Math.ceil((g.stuckUntil - now) / 1000) + ' 秒</span>');
+  if (Game.gravityNear(now)) fx.push('<span style="color:#c7b8ff">重力拖慢</span>');
   if (now < g.darkUntil) fx.push('<span style="color:#d9a8ff">黑暗降臨</span>');
   else if (fog) fx.push('<span style="color:#bfe3ee">迷霧籠罩</span>');
   fx.push('<span class="lives">額外生命 × ' + g.lives + '</span>');
@@ -1606,7 +1844,7 @@ function draw() {
   const tc = danger ? '#ff6b5e' : '#f2b544';
   $('timeText').textContent = fmt(left / 1000);
   $('timeText').style.color = tc;
-  $('timeBar').style.width = Math.min(100, left / (TIME_LIMIT + g.bonus) * 100) + '%';
+  $('timeBar').style.width = Math.min(100, left / (g.limit + g.bonus) * 100) + '%';
   $('timeBar').style.background = tc;
   $('board').classList.toggle('danger', danger);
   $('objective').textContent = g.hasKey ? '前往出口大門' : '尋找鑰匙';
@@ -1623,7 +1861,8 @@ function draw() {
   $('mTime').style.color = tc;
   $('mKey').classList.toggle('have', g.hasKey);
   $('mSafe').textContent = '安全區 ' + act;
-  $('mMsg').textContent = sz ? '安全區內,剩 ' + Math.ceil(sz.energy / 1000) + ' 秒' : (hot ? g.msg : (g.hasKey ? '鑰匙到手!找外牆上的大門' : '在迷宮上滑動或按方向鍵移動'));
+  const tipNow = now - g.t0 < 7000 && !sz;
+  $('mMsg').textContent = tipNow ? '提示:' + TIPS[g.n - 1] : sz ? '安全區內,剩 ' + Math.ceil(sz.energy / 1000) + ' 秒' : (hot ? g.msg : (g.hasKey ? '鑰匙到手!找外牆上的大門' : '在迷宮上滑動或按方向鍵移動'));
   $('mMsg').classList.toggle('hot', hot && !sz);
   $('mMsg').classList.toggle('safe', !!sz);
   for (const t of USABLE) {
@@ -1639,6 +1878,153 @@ function draw() {
   } else cp.style.display = 'none';
 }
 
+// ---------------- 線上排行榜(claude.ai 登入身分 + 共享資料庫) ----------------
+// 每位玩家一份文件 scores/<玩家 id>:{ name, best: { "關卡": 秒數 }, updated }
+const Online = {
+  ready: false, avail: false, db: null, user: null, uid: null, canWrite: null, readonly: false,
+  rows: [], mine: null, pending: null, chain: Promise.resolve(),
+
+  async init() {
+    const C = window.claude;
+    if (C && typeof C.use === 'function') {
+      try {
+        const [db, user] = await Promise.all([C.use('db'), C.use('user')]);
+        this.db = db; this.user = user; this.avail = !!db;
+        if (user) {
+          this.uid = await user.id();
+          this.canWrite = await user.can('data.write');
+        }
+        if (db) {
+          db.collection('scores').onSnapshot((snap) => {
+            this.rows = snap.docs.filter(d => d.exists).map(d => this.clean(d.id, d.data())).filter(Boolean);
+            const mine = this.rows.find(r => r.id === this.uid);
+            if (mine) this.mine = { name: mine.name, best: Object.assign({}, mine.best) };
+            UI.renderBoard();
+          }, () => { this.avail = false; UI.renderBoard(); });
+        }
+      } catch (e) { this.avail = false; }
+    }
+    this.ready = true;
+    UI.renderBoard();
+  },
+
+  // 其他玩家寫入的資料一律視為不可信:只取需要的欄位並檢查格式
+  clean(id, d) {
+    if (!d || typeof d.name !== 'string') return null;
+    const best = {};
+    if (d.best && typeof d.best === 'object') {
+      for (let n = 1; n <= LEVELS; n++) {
+        const v = d.best[n];
+        if (typeof v === 'number' && isFinite(v) && v > 0 && v < 100000) best[n] = Math.round(v);
+      }
+    }
+    return { id, name: d.name.slice(0, 12), best };
+  },
+
+  state() {
+    if (!this.ready) return 'loading';
+    if (!this.avail) return 'offline';
+    if (!this.uid) return 'nologin';
+    if (this.canWrite === false || this.readonly) return 'readonly';
+    if (!this.mine || !this.mine.name) return 'noname';
+    return 'ok';
+  },
+
+  write(data) {
+    const ref = this.db.doc('scores/' + this.uid);
+    const p = this.chain.then(() => ref.set(data));
+    this.chain = p.catch(() => {});
+    return p.catch((e) => {
+      if (e && e.code === 'invalid_argument') this.readonly = true;
+      UI.renderBoard();
+      throw e;
+    });
+  },
+
+  upsertLocal() {
+    const row = { id: this.uid, name: this.mine.name, best: Object.assign({}, this.mine.best) };
+    const i = this.rows.findIndex(r => r.id === this.uid);
+    if (i >= 0) this.rows[i] = row; else this.rows.push(row);
+    UI.renderBoard();
+  },
+
+  async saveName(raw) {
+    const name = String(raw || '').trim().slice(0, 12);
+    if (!name || !this.avail || !this.uid) return false;
+    this.mine = { name, best: Object.assign({}, this.mine ? this.mine.best : {}) };
+    if (this.pending) {
+      const { n, sec } = this.pending;
+      if (this.mine.best[n] == null || sec < this.mine.best[n]) this.mine.best[n] = sec;
+    }
+    this.upsertLocal();
+    try {
+      await this.write({ name, best: this.mine.best, updated: Date.now() });
+      return true;
+    } catch (e) { return false; }
+  },
+
+  async record(n, sec) {
+    const best = Object.assign({}, this.mine.best);
+    const prev = best[n];
+    const improved = prev == null || sec < prev;
+    if (improved) {
+      best[n] = sec;
+      this.mine = { name: this.mine.name, best };
+      this.upsertLocal();
+      try { await this.write({ name: this.mine.name, best, updated: Date.now() }); }
+      catch (e) { return { failed: true }; }
+    }
+    return { improved, prev };
+  },
+
+  levelRank(n) {
+    return this.rows.filter(r => r.best[n] != null).sort((a, b) => a.best[n] - b.best[n]);
+  },
+  overallRank() {
+    return this.rows.map(r => {
+      const ks = Object.keys(r.best);
+      return { id: r.id, name: r.name, cleared: ks.length, total: ks.reduce((s, k) => s + r.best[k], 0) };
+    }).filter(r => r.cleared > 0).sort((a, b) => b.cleared - a.cleared || a.total - b.total);
+  },
+
+  // 過關後:記錄成績並回報名次
+  async onWin(n, sec) {
+    const box = $('rBoard');
+    const st = this.state();
+    this.pending = null;
+    $('rNameForm').classList.add('hidden');
+    if (st === 'offline') { box.textContent = '排行榜只在線上版提供(在 claude.ai 開啟並登入)。'; return; }
+    if (st === 'loading') { box.textContent = ''; return; }
+    if (st === 'nologin') { box.textContent = '登入 claude.ai 後就能把通關時間記錄到排行榜。'; return; }
+    if (st === 'readonly') { box.textContent = '你目前只有檢視權限,這次成績沒有記錄到排行榜。'; return; }
+    if (st === 'noname') {
+      this.pending = { n, sec };
+      box.textContent = '輸入玩家名稱,就能把這次的通關時間記錄到排行榜:';
+      $('rNameForm').classList.remove('hidden');
+      return;
+    }
+    box.textContent = '正在記錄成績…';
+    const res = await this.record(n, sec);
+    this.showRank(n, sec, res);
+  },
+
+  showRank(n, sec, res) {
+    const box = $('rBoard');
+    if (res.failed) { box.textContent = '成績沒有記錄成功,請稍後再試。'; return; }
+    const list = this.levelRank(n);
+    const rank = list.findIndex(r => r.id === this.uid) + 1;
+    box.innerHTML = '';
+    const b = document.createElement('b');
+    if (res.improved) {
+      b.textContent = res.prev == null ? '成績已記錄!' : '新紀錄!';
+      box.append(b, document.createTextNode('第 ' + n + ' 關排行榜第 ' + rank + ' 名(共 ' + list.length + ' 人)'));
+    } else {
+      box.append(document.createTextNode('你的最佳紀錄是 '), Object.assign(b, { textContent: fmt(res.prev) }),
+        document.createTextNode(',目前排行第 ' + rank + ' 名。'));
+    }
+  }
+};
+
 const UI = {
   renderMenu() {
     const box = $('tiers');
@@ -1648,6 +2034,8 @@ const UI = {
       const extras = [(t + 1) + ' 隻怪物同時追捕'];
       if (n0 >= ITEM_FROM) extras.push('道具 ' + (2 * (t + 1)) + ' 個');
       if (n0 >= TRAP_FROM) extras.push('陷阱');
+      if (n0 + 4 >= VAULT_FROM) extras.push('密室');
+      extras.push('限時 ' + timeLimit(n0) / 60000 + ' 分鐘');
       const tier = document.createElement('div');
       tier.className = 'tier';
       tier.innerHTML = '<div class="tier-h"><b>第 ' + n0 + '–' + (n0 + 4) + ' 關</b><span>' + extras.join(' · ') + '</span></div>';
@@ -1703,7 +2091,70 @@ const UI = {
         '<div class="ds">' + m.desc + '</div></div></div>';
     }).join('');
     fxCache = '';
+    $('tipBox').innerHTML = '<b>闖關提示</b>';
+    $('tipBox').append(document.createTextNode(TIPS[g.n - 1]));
+    try { window.getSelection().removeAllRanges(); } catch (e) {}
     window.scrollTo(0, 0);
+  },
+  renderBoard() {
+    const st = Online.state();
+    const status = $('lbStatus');
+    const form = $('nameForm');
+    const msgs = {
+      loading: '正在連線排行榜…',
+      offline: '排行榜只在線上版提供:請用 claude.ai 上的遊戲連結開啟並登入。下載版仍可正常遊玩。',
+      nologin: '請先登入 claude.ai,才能記錄通關時間並參加排行。',
+      readonly: '你目前只有檢視權限:可以看排行榜,但無法記錄成績。請遊戲擁有者在分享設定把你設為「Contributor(參與者)」。',
+      noname: '設定玩家名稱後,每次通關的時間都會記錄到排行榜。'
+    };
+    status.classList.toggle('warn', st !== 'ok');
+    if (st === 'ok') {
+      const done = Object.keys(Online.mine.best).length;
+      status.textContent = '';
+      const b = document.createElement('b');
+      b.textContent = Online.mine.name;
+      status.append(document.createTextNode('已登入,玩家名稱:'), b, document.createTextNode('。已記錄 ' + done + ' 關的通關時間,可以隨時改名。'));
+    } else status.textContent = msgs[st];
+    form.classList.toggle('hidden', !(st === 'ok' || st === 'noname'));
+    $('nickSave').textContent = st === 'ok' ? '更改名稱' : '儲存名稱';
+    if (st === 'ok' && document.activeElement !== $('nickInput') && !$('nickInput').value) $('nickInput').value = Online.mine.name;
+
+    const sel = $('lbSelect');
+    if (!sel.options.length) {
+      sel.append(new Option('總排行(通關數 → 總時間)', 'all'));
+      for (let n = 1; n <= LEVELS; n++) sel.append(new Option('第 ' + n + ' 關 · ' + THEMES[n - 1][0], String(n)));
+    }
+    const wrap = $('lbTable');
+    wrap.innerHTML = '';
+    if (!Online.avail) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = st === 'loading' ? '讀取中…' : '目前無法顯示排行榜。'; wrap.append(d); return; }
+    const v = sel.value;
+    const list = v === 'all' ? Online.overallRank() : Online.levelRank(+v).map(r => ({ id: r.id, name: r.name, time: r.best[+v] }));
+    if (!list.length) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = '還沒有人記錄成績,成為第一個吧!'; wrap.append(d); return; }
+    const table = document.createElement('table');
+    const head = document.createElement('tr');
+    (v === 'all' ? ['名次', '玩家', '通關數', '總時間'] : ['名次', '玩家', '通關時間']).forEach((h, k, arr) => {
+      const th = document.createElement('th'); th.textContent = h;
+      if (k === arr.length - 1) th.style.textAlign = 'right';
+      head.append(th);
+    });
+    table.append(head);
+    const myIdx = list.findIndex(r => r.id === Online.uid);
+    const show = list.slice(0, 10).map((r, i) => [r, i]);
+    if (myIdx >= 10) show.push([list[myIdx], myIdx]);
+    for (const [r, i] of show) {
+      const tr = document.createElement('tr');
+      if (r.id === Online.uid) tr.className = 'me';
+      const cells = v === 'all' ? [i + 1, r.name, r.cleared + ' 關', fmt(r.total)] : [i + 1, r.name, fmt(r.time)];
+      cells.forEach((c, k) => {
+        const td = document.createElement('td');
+        td.textContent = String(c) + (k === 1 && r.id === Online.uid ? '(你)' : '');
+        if (k === 0) td.className = 'rk';
+        if (k === cells.length - 1) td.className = 'tm';
+        tr.append(td);
+      });
+      table.append(tr);
+    }
+    wrap.append(table);
   },
   showResult(win, reason, used, n) {
     $('rTag').textContent = win ? 'ESCAPED' : 'CAUGHT';
@@ -1713,6 +2164,11 @@ const UI = {
     $('rTime').textContent = '用時 ' + fmt(used);
     $('resultBox').style.borderColor = win ? '#2f5a3c' : '#6a2a24';
     $('rNext').classList.toggle('hidden', !(win && n < LEVELS));
+    $('rTip').classList.toggle('hidden', win);
+    if (!win) { $('rTip').innerHTML = '<b>提示</b>'; $('rTip').append(document.createTextNode(TIPS[n - 1])); }
+    $('rBoard').textContent = '';
+    $('rNameForm').classList.add('hidden');
+    if (win) Online.onWin(n, used);
     $('overlay').classList.add('show');
     setTimeout(() => (win && n < LEVELS ? $('rNext') : $('rRetry')).focus(), 30);
   }
@@ -1893,6 +2349,47 @@ $('compassToggle').addEventListener('change', (e) => {
 });
 try { Game.cleared = JSON.parse(localStorage.getItem('maze-escape-cleared') || '{}') || {}; } catch (e) { Game.cleared = {}; }
 
+// 排行榜表單
+$('lbSelect').addEventListener('change', () => UI.renderBoard());
+$('nameForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const ok = await Online.saveName($('nickInput').value);
+  if (ok) $('nickInput').value = Online.mine.name;
+});
+$('rNameForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const p = Online.pending;
+  if (!p) return;
+  const ok = await Online.saveName($('rNick').value);
+  $('rNameForm').classList.add('hidden');
+  Online.pending = null;
+  if (ok) Online.showRank(p.n, p.sec, { improved: true, prev: null });
+  else $('rBoard').textContent = '名稱沒有儲存成功,請稍後再試。';
+});
+
+// 手機:避免長按選到文字或跳出選單而卡住操作
+document.addEventListener('selectstart', (e) => {
+  const t = e.target && e.target.closest ? e.target : null;
+  if (Game.g && !(t && t.closest('input'))) e.preventDefault();
+});
+document.addEventListener('contextmenu', (e) => {
+  if (Game.g && e.target && e.target.closest && e.target.closest('#play')) e.preventDefault();
+});
+const noTouchDefault = (e) => { if (e.cancelable) e.preventDefault(); };
+cv.addEventListener('touchstart', noTouchDefault, { passive: false });
+document.querySelectorAll('.dpad button').forEach(b => b.addEventListener('touchstart', noTouchDefault, { passive: false }));
+// 手指離開畫面(或被系統中斷)時,一律放開觸控方向,避免角色卡住
+const releaseTouch = () => {
+  endSwipe();
+  Game.held = Game.held.filter(k => !k.startsWith('Arrow'));
+  try { const s = window.getSelection(); if (s && Game.g && s.rangeCount && !(document.activeElement && document.activeElement.tagName === 'INPUT')) s.removeAllRanges(); } catch (e) {}
+};
+window.addEventListener('pointerup', releaseTouch);
+window.addEventListener('pointercancel', releaseTouch);
+window.addEventListener('touchend', releaseTouch);
+window.addEventListener('touchcancel', releaseTouch);
+
+Online.init();
 setInterval(() => Game.tick(), 50);
 (function loop() { draw(); requestAnimationFrame(loop); })();
 UI.renderMenu();
