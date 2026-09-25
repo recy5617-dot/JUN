@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>迷宮逃脫</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0f13;--panel:#16181e;--panel2:#1c1f27;--line:#2c2f38;--text:#ece6d8;--muted:#a9a293;--soft:#d9d2c2;
+  --amber:#f2b544;--danger:#ff6b5e;--ok:#8fe8a8;
+  --serif:"Noto Serif TC",serif;--sans:"Noto Sans TC",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;padding:36px 40px}
+.eyebrow{font-size:13px;letter-spacing:.3em;color:var(--amber);font-weight:700}
+h1{margin:0;font-family:var(--serif);font-weight:900;font-size:48px;line-height:1.1}
+.sub{margin:0;font-size:15px;color:var(--muted)}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:14px;background:var(--panel)}
+.chip.gold{border-color:#5a4a22;background:#221c0e;color:var(--amber)}
+label.chip{display:flex;gap:8px;align-items:center;cursor:pointer}
+.tier{margin-bottom:16px}
+.tier-h{display:flex;gap:12px;align-items:baseline;margin-bottom:8px}
+.tier-h b{font-family:var(--serif);font-weight:600;font-size:17px}
+.tier-h span{font-size:13px;color:var(--muted)}
+.grid5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.card{position:relative;min-height:104px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px}
+.card:hover{border-color:#4a4d58}
+.card .n{font-family:var(--serif);font-weight:900;font-size:26px;color:var(--amber);line-height:1}
+.card .t{font-size:16px;font-weight:700}
+.card .s{font-size:12px;color:var(--muted)}
+.card .m{font-size:13px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .done{position:absolute;top:12px;right:12px;font-size:12px;padding:2px 8px;border-radius:999px;background:#1f3a28;color:#9be3b0}
+.play{display:flex;gap:40px;padding:40px;max-width:1280px;margin:0 auto}
+.left{width:540px;flex-shrink:0;display:flex;flex-direction:column;gap:16px}
+.board{position:relative;width:540px;height:540px;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#07080b}
+.board.danger{border-color:#7a2b24}
+.board canvas{display:block;width:100%;height:100%}
+.fogtag{position:absolute;left:12px;top:12px;padding:4px 10px;border-radius:999px;background:rgba(20,30,36,.9);color:#bfe3ee;font-size:13px;display:none}
+.ctrl{display:flex;gap:24px;align-items:center}
+.dpad{display:grid;grid-template-columns:repeat(3,48px);gap:6px}
+.dpad button{height:48px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.hint{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);line-height:1.6}
+.hint b{color:var(--text)}
+.right{flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.lvl{font-size:13px;letter-spacing:.25em;color:var(--amber);font-weight:700}
+h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:1.15}
+.tags{display:flex;gap:8px;flex-wrap:wrap}
+.tag{padding:4px 10px;border-radius:6px;background:var(--panel2);font-size:13px;color:var(--soft)}
+.tag.mud{background:#2a2114;color:#e5c38e}
+.row{display:flex;gap:14px}
+.box{padding:16px 18px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.timer{flex-grow:1;display:flex;flex-direction:column;gap:10px}
+.timer .top{display:flex;justify-content:space-between;align-items:baseline}
+.timer .lab{font-size:14px;color:var(--muted)}
+.timer .val{font-family:var(--serif);font-weight:900;font-size:40px;line-height:1;color:var(--amber)}
+.bar{height:8px;border-radius:4px;background:#262932;overflow:hidden}
+.bar i{display:block;height:8px;background:var(--amber);border-radius:4px;width:100%}
+.obj{width:240px;display:flex;gap:12px;align-items:center}
+.keyic{width:48px;height:48px;border-radius:50%;background:#262932;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6b6f7a}
+.keyic.have{background:#3a2d0c;color:var(--amber)}
+.obj .lab{font-size:13px;color:var(--muted)}
+.obj .val{font-size:16px;font-weight:700}
+#compass{flex-shrink:0;color:var(--amber);display:none}
+.msg{padding:12px 16px;border-radius:10px;background:var(--panel);color:var(--muted);font-size:15px;font-weight:500;min-height:46px}
+.msg.hot{background:#2a2210;color:#f5d58a}
+.roster-h{display:flex;justify-content:space-between;align-items:baseline}
+.roster-h b{font-family:var(--serif);font-weight:600;font-size:18px}
+.roster-h span{font-size:13px;color:var(--muted)}
+.roster{display:flex;flex-direction:column;gap:10px;flex-grow:1}
+.mon{display:flex;gap:14px;align-items:center;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.glyph{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;font-size:20px;flex-shrink:0}
+.mon .nm{font-size:16px;font-weight:700}
+.mon .ai{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid #3a3d48;color:var(--soft);margin-left:8px}
+.mon .ds{font-size:13px;color:var(--muted);line-height:1.5}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn{height:48px;padding:0 22px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px;font-weight:500}
+.btn.gold{border-color:#5a4a22;background:#221c0e;color:var(--amber);font-weight:700}
+.btn.solid{border:none;background:var(--amber);color:#1a1406;font-weight:700}
+.overlay{position:fixed;inset:0;background:rgba(6,7,10,.78);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.overlay.show{display:flex}
+.result{width:460px;max-width:100%;padding:36px 36px 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
+.result h2{font-size:40px}
+.result p{margin:0}
+.hidden{display:none!important}
+@media (max-width:1100px){
+  .play{flex-direction:column;padding:16px;gap:20px}
+  .left{width:100%;align-items:center}
+  .board{width:min(540px,100%);height:auto;aspect-ratio:1}
+  .grid5{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wrap{padding:24px 16px}
+  h1{font-size:36px}
+}
+@media (max-width:560px){
+  .row{flex-direction:column}
+  .obj{width:auto}
+  .ctrl{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<section id="menu" class="wrap">
+  <div class="head">
+    <div>
+      <div class="eyebrow">LANTERN MAZE</div>
+      <h1>迷宮逃脫</h1>
+      <p class="sub">提著燈籠走進黑暗:找到鑰匙、打開大門,在怪物追上你之前逃出去。</p>
+    </div>
+    <div class="chips">
+      <span class="chip">每關限時 5:00</span>
+      <span class="chip">視野只有 2 格</span>
+      <span class="chip">鑰匙 → 大門</span>
+      <span class="chip">每 5 關怪物 +1</span>
+      <label class="chip"><input type="checkbox" id="compassToggle"> 顯示羅盤(簡單模式)</label>
+      <span class="chip gold" id="clearedChip">已通關 0 / 20</span>
+    </div>
+  </div>
+  <div id="tiers"></div>
+</section>
+
+<section id="play" class="hidden">
+  <div class="play">
+    <div class="left">
+      <div class="board" id="board">
+        <canvas id="cv" width="540" height="540" aria-label="迷宮畫面:用方向鍵或 WASD 移動"></canvas>
+        <div class="fogtag" id="fogtag">迷霧籠罩:視野 1 格</div>
+      </div>
+      <div class="ctrl">
+        <div class="dpad">
+          <span></span>
+          <button data-k="ArrowUp" aria-label="向上"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+          <span></span>
+          <button data-k="ArrowLeft" aria-label="向左"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button data-k="ArrowDown" aria-label="向下"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+          <button data-k="ArrowRight" aria-label="向右"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+        <div class="hint">
+          <span>用 <b>方向鍵 / WASD</b> 移動,按住可連續前進。</span>
+          <span>觸控裝置請按住左側方向鍵。按 <b>Esc</b> 返回選單。</span>
+          <span>泥沼、蛛網會讓你變慢;怪物只在燈光範圍內可見。</span>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div>
+        <div class="lvl" id="lvlNum">第 01 關</div>
+        <h2 id="themeName"></h2>
+        <div class="tags" id="tags" style="margin-top:6px"></div>
+      </div>
+      <div class="row">
+        <div class="box timer">
+          <div class="top"><span class="lab">剩餘時間</span><span class="val" id="timeText">5:00</span></div>
+          <div class="bar"><i id="timeBar"></i></div>
+        </div>
+        <div class="box obj">
+          <div class="keyic" id="keyIc"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M18 12v3.5M21 12v2.5"/></svg></div>
+          <div style="flex-grow:1"><div class="lab">目標</div><div class="val" id="objective">尋找鑰匙</div></div>
+          <svg id="compass" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V4M6 10l6-6 6 6"/></svg>
+        </div>
+      </div>
+      <div class="msg" id="msg"></div>
+      <div class="roster-h"><b>本關怪物</b><span id="monCount"></span></div>
+      <div class="roster" id="roster"></div>
+      <div class="btns">
+        <button class="btn gold" id="btnRestart">重新開始本關</button>
+        <button class="btn" id="btnMenu">返回關卡選單</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="overlay" id="overlay">
+  <div class="result" id="resultBox">
+    <div class="eyebrow" id="rTag"></div>
+    <h2 id="rTitle"></h2>
+    <p id="rReason" style="font-size:15px;color:var(--soft);line-height:1.6"></p>
+    <p id="rTime" style="font-size:14px;color:var(--muted)"></p>
+    <div class="btns" style="margin-top:8px;justify-content:center">
+      <button class="btn solid" id="rNext">下一關</button>
+      <button class="btn gold" id="rRetry">再試一次</button>
+      <button class="btn" id="rMenu">關卡選單</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const KEYMAP = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0], W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0] };
+const TIME_LIMIT = 300000;
+const VIEW_R = 4, TILE = 60;
+
+// [名稱, 演算法, 迴路比例, 房間數, 泥沼比例, 地板色, 牆色, 泥沼名稱]
+const THEMES = [
+  ['苔石迴廊', 'dfs', 0, 0, 0, '#3b4b3d', '#1b271e', ''],
+  ['沙岩古道', 'prim', 0, 0, 0, '#6a5940', '#35291b', ''],
+  ['樹根密林', 'kruskal', 0.1, 0, 0, '#3e4b2d', '#1c2613', ''],
+  ['地下水道', 'dfs', 0.2, 0, 0.05, '#2f4550', '#14212a', '水窪'],
+  ['冰晶洞窟', 'grow', 0.1, 0, 0, '#4b6778', '#1d2f3a', ''],
+  ['廢棄礦坑', 'dfs', 0.05, 3, 0, '#56493e', '#261f19', ''],
+  ['蘑菇沼澤', 'prim', 0.2, 0, 0.08, '#3f4b3a', '#1f1c2b', '泥沼'],
+  ['骨骸墓穴', 'kruskal', 0.1, 4, 0, '#5a5550', '#24201d', ''],
+  ['熔岩裂谷', 'dfs', 0.15, 0, 0, '#4d302a', '#28100d', ''],
+  ['鏡之殿堂', 'prim', 0.3, 2, 0, '#505a6f', '#232937', ''],
+  ['蛛網地窖', 'grow', 0.15, 4, 0, '#403b46', '#1b1820', ''],
+  ['沉沒神殿', 'kruskal', 0.2, 2, 0.06, '#2e4a4a', '#102323', '積水'],
+  ['石像庭園', 'dfs', 0.1, 5, 0, '#565b53', '#252823', ''],
+  ['黑曜迷城', 'prim', 0.1, 0, 0, '#3b3649', '#130e1d', ''],
+  ['暗影森林', 'kruskal', 0.25, 0, 0.04, '#303b2f', '#0f160f', '腐葉'],
+  ['迷霧高塔', 'grow', 0.2, 3, 0, '#4e5761', '#20262d', ''],
+  ['鐘樓機關', 'dfs', 0.3, 2, 0, '#5b4b37', '#291f14', ''],
+  ['寶庫迷宮', 'prim', 0.15, 6, 0, '#5b5131', '#28220e', ''],
+  ['獵場荒原', 'kruskal', 0.35, 3, 0.05, '#554b39', '#282216', '流沙'],
+  ['魔王深淵', 'grow', 0.3, 6, 0.03, '#4b2b35', '#1d0a10', '血池']
+];
+const ALGO = { dfs: '深度優先 · 長走廊', prim: 'Prim · 多岔路', kruskal: 'Kruskal · 均勻分岔', grow: '生長樹 · 混合型' };
+
+const MONS = [
+  { id: 'wisp', name: '遊魂', glyph: '魂', color: '#8fd3c7', ink: '#10201d', ai: '漫遊', desc: '隨機遊蕩,5 格內察覺到你就追上來。' },
+  { id: 'golem', name: '石魔', glyph: '石', color: '#b8a58c', ink: '#1f1a12', ai: '追蹤', desc: '永遠沿最短路徑追你,但步伐沉重緩慢。' },
+  { id: 'watch', name: '巡夜人', glyph: '巡', color: '#e6c86e', ink: '#241c05', ai: '巡邏', desc: '在迷宮各處巡邏,6 格內發現你就加速追擊。' },
+  { id: 'ambush', name: '伏擊者', glyph: '伏', color: '#e88fb0', ink: '#2a0d18', ai: '伏擊', desc: '預判你的方向,繞到你前方 4 格埋伏。' },
+  { id: 'hound', name: '獵犬', glyph: '犬', color: '#d99a5b', ink: '#26160a', ai: '嗅跡', desc: '沿著你走過的足跡一步步快速追來。' },
+  { id: 'phantom', name: '幽影', glyph: '幽', color: '#a9b7ff', ink: '#121833', ai: '穿牆', desc: '能直接穿過牆壁朝你飄來,但移動很慢。' },
+  { id: 'blink', name: '閃現魔', glyph: '閃', color: '#c49cff', ink: '#1d0f33', ai: '瞬移', desc: '每 12 秒瞬移到你附近 5–9 格的位置。' },
+  { id: 'warden', name: '守門人', glyph: '守', color: '#7fb2e0', ink: '#0c1a28', ai: '守衛', desc: '守在鑰匙旁;你拿到鑰匙後改守出口。' },
+  { id: 'berserk', name: '狂戰士', glyph: '狂', color: '#ff7a5c', ink: '#2a0c05', ai: '衝鋒', desc: '6 格內發現你就猛衝 3 秒,之後喘息 2 秒。' },
+  { id: 'flank', name: '夾擊者', glyph: '夾', color: '#6fd48a', ink: '#0a2412', ai: '包夾', desc: '與同伴配合,從另一側包抄你。' },
+  { id: 'echo', name: '回聲', glyph: '聲', color: '#d0d0d0', ink: '#1a1a1a', ai: '重播', desc: '8 秒後重走你的路線,停留太久就會被追上。' },
+  { id: 'oracle', name: '先知', glyph: '知', color: '#f0e08a', ink: '#262006', ai: '攔截', desc: '算出你前往目標的路線,在半路攔截。' },
+  { id: 'garg', name: '石像鬼', glyph: '像', color: '#9aa3ad', ink: '#14181c', ai: '凝視', desc: '你移動時它不動;你一停下它就高速逼近。' },
+  { id: 'weaver', name: '織網蛛', glyph: '蛛', color: '#c7b3d9', ink: '#1e1328', ai: '織網', desc: '沿途留下蛛網,踩到蛛網移動變慢。' },
+  { id: 'shade', name: '暗影', glyph: '影', color: '#6c6f8a', ink: '#ffffff', ai: '隱形', desc: '幾乎看不見,只有貼身或閃爍時才現形。' },
+  { id: 'mist', name: '迷霧妖', glyph: '霧', color: '#9cc9d6', ink: '#0d2026', ai: '遮蔽', desc: '靠近 4 格內時,你的視野縮小為 1 格。' },
+  { id: 'pendulum', name: '鐘擺怪', glyph: '擺', color: '#e0a95c', ink: '#261805', ai: '變速', desc: '速度以 6 秒為週期忽快忽慢。' },
+  { id: 'thief', name: '竊鑰賊', glyph: '賊', color: '#8fe0a0', ink: '#0b2412', ai: '竊取', desc: '不會殺你,但會搶走鑰匙藏到別處。' },
+  { id: 'hunter', name: '獵王', glyph: '獵', color: '#ff9d7a', ink: '#2a0f05', ai: '加速', desc: '持續追蹤,每 10 秒速度提升一級。' },
+  { id: 'mino', name: '牛頭魔王', glyph: '魔', color: '#ff5c6c', ink: '#2a0508', ai: '破牆', desc: '高速追擊,每 15 秒撞破一面牆衝向你。' }
+];
+
+function rng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function lineup(n) {
+  const c = 1 + Math.floor((n - 1) / 5);
+  const out = [];
+  for (let i = 0; i < c; i++) out.push(n - 1 - i);
+  return out;
+}
+function sizeOf(n) { return { W: 13 + 2 * (n - 1), H: 11 + 2 * (n - 1) }; }
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function fmt(sec) { const s = Math.max(0, Math.ceil(sec)); return Math.floor(s / 60) + ':' + pad2(s % 60); }
+
+function bfs(g, W, H, sx, sy) {
+  const d = new Int16Array(W * H).fill(-1);
+  const q = new Int32Array(W * H);
+  let h = 0, t = 0;
+  const s = sy * W + sx;
+  d[s] = 0; q[t++] = s;
+  while (h < t) {
+    const c = q[h++];
+    const x = c % W, y = (c - x) / W;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DIRS[k][0], ny = y + DIRS[k][1];
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const ni = ny * W + nx;
+      if (d[ni] !== -1 || g[ni] !== 0) continue;
+      d[ni] = d[c] + 1; q[t++] = ni;
+    }
+  }
+  return d;
+}
+
+function buildLevel(n) {
+  const T = THEMES[n - 1];
+  const { W, H } = sizeOf(n);
+  const r = rng(n * 7919 + 17);
+  const g = new Uint8Array(W * H).fill(1);
+  const I = (x, y) => y * W + x;
+  const inner = (x, y) => x > 0 && y > 0 && x < W - 1 && y < H - 1;
+  const algo = T[1];
+  if (algo === 'dfs' || algo === 'grow') {
+    const stack = [[1, 1]]; g[I(1, 1)] = 0;
+    while (stack.length) {
+      const k = algo === 'dfs' || r() < 0.5 ? stack.length - 1 : Math.floor(r() * stack.length);
+      const [x, y] = stack[k];
+      const nb = [];
+      for (const [dx, dy] of DIRS) { const nx = x + dx * 2, ny = y + dy * 2; if (inner(nx, ny) && g[I(nx, ny)] === 1) nb.push([nx, ny, dx, dy]); }
+      if (!nb.length) { stack.splice(k, 1); continue; }
+      const [nx, ny, dx, dy] = nb[Math.floor(r() * nb.length)];
+      g[I(x + dx, y + dy)] = 0; g[I(nx, ny)] = 0; stack.push([nx, ny]);
+    }
+  } else if (algo === 'prim') {
+    g[I(1, 1)] = 0;
+    const front = [];
+    const addF = (x, y) => { for (const [dx, dy] of DIRS) { const nx = x + dx * 2, ny = y + dy * 2; if (inner(nx, ny) && g[I(nx, ny)] === 1) front.push([nx, ny, x + dx, y + dy]); } };
+    addF(1, 1);
+    while (front.length) {
+      const i = Math.floor(r() * front.length);
+      const f = front[i]; front[i] = front[front.length - 1]; front.pop();
+      if (g[I(f[0], f[1])] === 0) continue;
+      g[I(f[0], f[1])] = 0; g[I(f[2], f[3])] = 0; addF(f[0], f[1]);
+    }
+  } else {
+    const parent = new Int32Array(W * H);
+    for (let i = 0; i < parent.length; i++) parent[i] = i;
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const edges = [];
+    for (let y = 1; y < H - 1; y += 2) for (let x = 1; x < W - 1; x += 2) {
+      g[I(x, y)] = 0;
+      if (x + 2 < W - 1) edges.push([x, y, x + 2, y]);
+      if (y + 2 < H - 1) edges.push([x, y, x, y + 2]);
+    }
+    for (let i = edges.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const tmp = edges[i]; edges[i] = edges[j]; edges[j] = tmp; }
+    for (const [ax, ay, bx, by] of edges) {
+      const a = find(I(ax, ay)), b = find(I(bx, by));
+      if (a !== b) { parent[a] = b; g[I((ax + bx) / 2, (ay + by) / 2)] = 0; }
+    }
+  }
+  // 房間
+  for (let k = 0; k < T[3]; k++) {
+    const rw = r() < 0.5 ? 3 : 5, rh = r() < 0.5 ? 3 : 5;
+    const mx = Math.floor((W - 1 - rw) / 2), my = Math.floor((H - 1 - rh) / 2);
+    const rx = 1 + 2 * Math.floor(r() * mx), ry = 1 + 2 * Math.floor(r() * my);
+    for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) g[I(x, y)] = 0;
+  }
+  // 迴路:打通部分死路
+  if (T[2] > 0) {
+    for (let y = 1; y < H - 1; y += 2) for (let x = 1; x < W - 1; x += 2) {
+      let open = 0;
+      for (const [dx, dy] of DIRS) if (g[I(x + dx, y + dy)] === 0) open++;
+      if (open === 1 && r() < T[2]) {
+        const opts = DIRS.filter(([dx, dy]) => g[I(x + dx, y + dy)] === 1 && inner(x + dx * 2, y + dy * 2));
+        if (opts.length) { const [dx, dy] = opts[Math.floor(r() * opts.length)]; g[I(x + dx, y + dy)] = 0; }
+      }
+    }
+  }
+  const mud = new Uint8Array(W * H);
+  if (T[4] > 0) for (let i = 0; i < W * H; i++) if (g[i] === 0 && i !== I(1, 1) && r() < T[4]) mud[i] = 1;
+  const ds = bfs(g, W, H, 1, 1);
+  const floors = [];
+  let maxD = 0;
+  for (let i = 0; i < W * H; i++) if (ds[i] > 0) { floors.push(i); if (ds[i] > maxD) maxD = ds[i]; }
+  const far = floors.filter(i => ds[i] >= maxD * 0.8);
+  const ki = far[Math.floor(r() * far.length)];
+  const key = { x: ki % W, y: Math.floor(ki / W) };
+  const dk = bfs(g, W, H, key.x, key.y);
+  let best = -1, door = null, doorIn = null;
+  for (let x = 1; x < W - 1; x++) for (const y of [0, H - 1]) {
+    const iy = y === 0 ? 1 : H - 2; const ii = I(x, iy);
+    if (g[ii] !== 0) continue;
+    const sc = dk[ii] + 0.6 * ds[ii] + r() * 3;
+    if (sc > best) { best = sc; door = { x, y }; doorIn = { x, y: iy }; }
+  }
+  for (let y = 1; y < H - 1; y++) for (const x of [0, W - 1]) {
+    const ix = x === 0 ? 1 : W - 2; const ii = I(ix, y);
+    if (g[ii] !== 0) continue;
+    const sc = dk[ii] + 0.6 * ds[ii] + r() * 3;
+    if (sc > best) { best = sc; door = { x, y }; doorIn = { x: ix, y }; }
+  }
+  g[I(door.x, door.y)] = 2;
+  const lu = lineup(n);
+  let cand = floors.filter(i => ds[i] >= Math.max(8, maxD * 0.45) && i !== ki);
+  if (cand.length < lu.length) cand = floors.filter(i => ds[i] >= 4);
+  const spawns = lu.map(mi => {
+    if (MONS[mi].id === 'echo') return { m: mi, x: 1, y: 1 };
+    const j = Math.floor(r() * cand.length);
+    const ci = cand.splice(j, 1)[0];
+    return { m: mi, x: ci % W, y: Math.floor(ci / W) };
+  });
+  return { W, H, grid: g, mud, key, door, doorIn, spawns, theme: T };
+}
+
+// ---------------- 遊戲核心 ----------------
+const Game = {
+  g: null,
+  held: [],
+  cleared: {},
+  compass: false,
+
+  start(n) {
+    const L = buildLevel(n);
+    const now = Date.now();
+    const g = Object.assign({}, L, {
+      n, hasKey: false, p: { x: 1, y: 1 }, facing: [1, 0], trail: [{ x: 1, y: 1, t: now }],
+      t0: now, lastMove: now, nextMove: now, webs: new Map(), ver: 0, cache: new Map(),
+      msg: '找到鑰匙,再前往出口大門!', msgUntil: now + 4000, over: false
+    });
+    g.mons = L.spawns.map((s, i) => {
+      const M = MONS[s.m];
+      return Object.assign({}, M, { type: M.id, x: s.x, y: s.y, px: s.x, py: s.y, next: now + 2500 + i * 400, hidden: M.id === 'echo' });
+    });
+    g.distP = bfs(g.grid, g.W, g.H, 1, 1);
+    this.g = g;
+    this.held = [];
+    UI.showPlay(g);
+  },
+
+  say(msg, now) { this.g.msg = msg; this.g.msgUntil = now + 3500; },
+
+  end(win, reason) {
+    const g = this.g;
+    if (g.over) return;
+    g.over = true;
+    g.endAt = Date.now();
+    const used = Math.round((g.endAt - g.t0) / 1000);
+    if (win && (this.cleared[g.n] == null || used < this.cleared[g.n])) {
+      this.cleared[g.n] = used;
+      try { localStorage.setItem('maze-escape-cleared', JSON.stringify(this.cleared)); } catch (e) {}
+    }
+    this.held = [];
+    UI.showResult(win, reason, used, g.n);
+  },
+
+  tick() {
+    const g = this.g;
+    if (!g || g.over) return;
+    const now = Date.now();
+    if (now - g.t0 >= TIME_LIMIT) { this.end(false, '時間到!五分鐘內沒能逃出迷宮。'); return; }
+    const hk = this.held[this.held.length - 1];
+    if (hk && now >= g.nextMove) this.tryMove(KEYMAP[hk], now);
+    for (const m of g.mons) {
+      if (g.over) return;
+      if (now >= m.next) { m.next = now + this.act(m, now); this.checkHits(now); }
+    }
+  },
+
+  tryMove(d, now) {
+    const g = this.g;
+    if (!g || g.over) return;
+    g.facing = d;
+    const nx = g.p.x + d[0], ny = g.p.y + d[1];
+    if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H) return;
+    const v = g.grid[ny * g.W + nx];
+    if (v === 1) { g.nextMove = now + 60; return; }
+    if (v === 2) {
+      if (g.hasKey) { g.p = { x: nx, y: ny }; this.end(true, '你用鑰匙打開大門,成功逃出迷宮!'); }
+      else { this.say('大門鎖著,先去找鑰匙!', now); g.nextMove = now + 200; }
+      return;
+    }
+    const ci = g.p.y * g.W + g.p.x;
+    let cost = 140;
+    if (g.mud[ci]) cost *= 1.8;
+    const w = g.webs.get(ci);
+    if (w && w > now) cost *= 2.4;
+    g.p = { x: nx, y: ny };
+    g.nextMove = now + cost;
+    g.lastMove = now;
+    g.trail.push({ x: nx, y: ny, t: now });
+    if (!g.hasKey && nx === g.key.x && ny === g.key.y) { g.hasKey = true; this.say('拿到鑰匙了!快找出口大門!', now); }
+    g.distP = bfs(g.grid, g.W, g.H, nx, ny);
+    this.checkHits(now);
+  },
+
+  checkHits(now) {
+    const g = this.g;
+    if (g.over) return;
+    for (const m of g.mons) {
+      if (m.hidden || m.x !== g.p.x || m.y !== g.p.y) continue;
+      if (m.type === 'thief') {
+        if (g.hasKey && !(m.until && now < m.until)) {
+          g.hasKey = false;
+          g.key = this.randFloor(10) || this.randFloor(0);
+          m.until = now + 3000;
+          this.say('竊鑰賊搶走了鑰匙,藏到別處去了!', now);
+        }
+      } else {
+        this.end(false, '你被「' + m.name + '」抓到了!');
+        return;
+      }
+    }
+  },
+
+  // ---- 移動工具 ----
+  dP(m) { const g = this.g; return g.distP[m.y * g.W + m.x]; },
+  moveTo(m, x, y) { m.px = m.x; m.py = m.y; m.x = x; m.y = y; },
+  stepDown(m, df) {
+    const g = this.g;
+    const cur = df[m.y * g.W + m.x];
+    if (cur <= 0) return false;
+    const opts = [];
+    for (const [dx, dy] of DIRS) {
+      const nx = m.x + dx, ny = m.y + dy;
+      if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H) continue;
+      const ni = ny * g.W + nx;
+      if (g.grid[ni] !== 0) continue;
+      const dv = df[ni];
+      if (dv >= 0 && dv < cur) opts.push([nx, ny]);
+    }
+    if (!opts.length) return false;
+    const o = opts[Math.floor(Math.random() * opts.length)];
+    this.moveTo(m, o[0], o[1]);
+    return true;
+  },
+  chase(m) { return this.stepDown(m, this.g.distP); },
+  distFrom(pt) {
+    const g = this.g;
+    const k = pt.x + ',' + pt.y + ',' + g.ver;
+    let d = g.cache.get(k);
+    if (!d) { if (g.cache.size > 60) g.cache.clear(); d = bfs(g.grid, g.W, g.H, pt.x, pt.y); g.cache.set(k, d); }
+    return d;
+  },
+  toward(m, tx, ty) { return this.stepDown(m, this.distFrom({ x: tx, y: ty })); },
+  wander(m, ok) {
+    const g = this.g;
+    const opts = [];
+    for (const [dx, dy] of DIRS) {
+      const nx = m.x + dx, ny = m.y + dy;
+      if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H) continue;
+      if (g.grid[ny * g.W + nx] !== 0) continue;
+      if (ok && !ok(nx, ny)) continue;
+      opts.push([nx, ny]);
+    }
+    if (!opts.length) return;
+    let c = opts.filter(o => !(o[0] === m.px && o[1] === m.py));
+    if (!c.length) c = opts;
+    const o = c[Math.floor(Math.random() * c.length)];
+    this.moveTo(m, o[0], o[1]);
+  },
+  randFloor(minD) {
+    const g = this.g;
+    const c = [];
+    for (let i = 0; i < g.W * g.H; i++) if (g.grid[i] === 0 && g.distP[i] >= minD) c.push(i);
+    if (!c.length) return null;
+    const i = c[Math.floor(Math.random() * c.length)];
+    return { x: i % g.W, y: Math.floor(i / g.W) };
+  },
+  cellsAtDist(a, b) {
+    const g = this.g;
+    const c = [];
+    for (let i = 0; i < g.W * g.H; i++) if (g.grid[i] === 0 && g.distP[i] >= a && g.distP[i] <= b) c.push(i);
+    if (!c.length) return null;
+    const i = c[Math.floor(Math.random() * c.length)];
+    return { x: i % g.W, y: Math.floor(i / g.W) };
+  },
+  ahead(k) {
+    const g = this.g;
+    let x = g.p.x, y = g.p.y;
+    for (let i = 0; i < k; i++) {
+      const nx = x + g.facing[0], ny = y + g.facing[1];
+      if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H || g.grid[ny * g.W + nx] !== 0) break;
+      x = nx; y = ny;
+    }
+    return { x, y };
+  },
+  nearestFloor(x, y) {
+    const g = this.g;
+    x = Math.max(1, Math.min(g.W - 2, x)); y = Math.max(1, Math.min(g.H - 2, y));
+    for (let r = 0; r < 7; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 1 || ny < 1 || nx > g.W - 2 || ny > g.H - 2) continue;
+      if (g.grid[ny * g.W + nx] === 0) return { x: nx, y: ny };
+    }
+    return { x: g.p.x, y: g.p.y };
+  },
+
+  // ---- 每種怪物的 AI,回傳下次行動的間隔(毫秒) ----
+  act(m, now) {
+    const g = this.g, p = g.p;
+    const d = this.dP(m);
+    const near = (r) => d >= 0 && d <= r;
+    const el = now - g.t0;
+    switch (m.type) {
+      case 'wisp':
+        if (near(5)) this.chase(m); else this.wander(m);
+        return 520;
+      case 'golem':
+        this.chase(m);
+        return 720;
+      case 'watch':
+        if (near(6)) { this.chase(m); return 400; }
+        if (!m.wp || (m.x === m.wp.x && m.y === m.wp.y)) m.wp = this.randFloor(0);
+        if (!m.wp || !this.toward(m, m.wp.x, m.wp.y)) m.wp = null;
+        return 520;
+      case 'ambush':
+        if (near(3)) this.chase(m);
+        else { const t = this.ahead(4); if (!this.toward(m, t.x, t.y)) this.chase(m); }
+        return 470;
+      case 'hound': {
+        const tr = g.trail;
+        if (near(3)) { this.chase(m); m.ti = tr.length - 1; return 330; }
+        if (m.ti == null) m.ti = 0;
+        let tg = tr[Math.min(m.ti, tr.length - 1)];
+        if (m.x === tg.x && m.y === tg.y) {
+          let j = m.ti;
+          for (let k = tr.length - 1; k > m.ti; k--) if (tr[k].x === m.x && tr[k].y === m.y) { j = k; break; }
+          m.ti = Math.min(j + 1, tr.length - 1);
+          tg = tr[m.ti];
+        }
+        this.toward(m, tg.x, tg.y);
+        return 330;
+      }
+      case 'phantom': {
+        const dx = p.x - m.x, dy = p.y - m.y;
+        let nx = m.x, ny = m.y;
+        if (Math.abs(dx) >= Math.abs(dy) && dx !== 0) nx += Math.sign(dx); else if (dy !== 0) ny += Math.sign(dy);
+        nx = Math.max(1, Math.min(g.W - 2, nx)); ny = Math.max(1, Math.min(g.H - 2, ny));
+        this.moveTo(m, nx, ny);
+        return 900;
+      }
+      case 'blink':
+        if (!m.nb) m.nb = now + 12000;
+        if (now >= m.nb) {
+          const c = this.cellsAtDist(5, 9);
+          if (c) { this.moveTo(m, c.x, c.y); this.say('閃現魔瞬移到你附近了!', now); }
+          m.nb = now + 12000;
+        } else if (near(4)) this.chase(m); else this.wander(m);
+        return 600;
+      case 'warden': {
+        const gp = g.hasKey ? g.doorIn : g.key;
+        const dg = this.distFrom(gp);
+        const mg = dg[m.y * g.W + m.x];
+        if (near(5) && mg <= 8) { this.chase(m); return 380; }
+        if (mg > 3) { this.stepDown(m, dg); return 420; }
+        this.wander(m, (x, y) => dg[y * g.W + x] >= 0 && dg[y * g.W + x] <= 3);
+        return 600;
+      }
+      case 'berserk':
+        if (m.st === 'rest') { if (now >= m.until) m.st = 'roam'; return 200; }
+        if (m.st === 'charge') {
+          if (now >= m.until) { m.st = 'rest'; m.until = now + 2000; return 100; }
+          this.chase(m); return 210;
+        }
+        if (near(6)) { m.st = 'charge'; m.until = now + 3000; this.say('狂戰士發狂衝鋒!', now); this.chase(m); return 210; }
+        this.wander(m);
+        return 650;
+      case 'flank': {
+        if (near(3)) { this.chase(m); return 440; }
+        const o = g.mons.find(x => x !== m && !x.hidden && x.type !== 'thief');
+        const t = o ? this.nearestFloor(2 * p.x - o.x, 2 * p.y - o.y) : this.ahead(3);
+        if (!this.toward(m, t.x, t.y)) this.chase(m);
+        return 440;
+      }
+      case 'echo': {
+        const target = now - 8000;
+        if (target < g.t0) { m.hidden = true; return 100; }
+        m.hidden = false;
+        if (m.ei == null) m.ei = 0;
+        const tr = g.trail;
+        while (m.ei + 1 < tr.length && tr[m.ei + 1].t <= target) m.ei++;
+        this.moveTo(m, tr[m.ei].x, tr[m.ei].y);
+        return 50;
+      }
+      case 'oracle': {
+        if (near(4)) { this.chase(m); return 470; }
+        const obj = g.hasKey ? g.doorIn : g.key;
+        const df = this.distFrom(obj);
+        let cx = p.x, cy = p.y;
+        const L = df[cy * g.W + cx];
+        const k = Math.min(8, Math.floor(Math.max(0, L) / 2));
+        for (let i = 0; i < k; i++) {
+          let moved = false;
+          for (const [dx, dy] of DIRS) {
+            const nx = cx + dx, ny = cy + dy, ni = ny * g.W + nx;
+            if (g.grid[ni] === 0 && df[ni] >= 0 && df[ni] < df[cy * g.W + cx]) { cx = nx; cy = ny; moved = true; break; }
+          }
+          if (!moved) break;
+        }
+        if (!this.toward(m, cx, cy)) this.chase(m);
+        return 470;
+      }
+      case 'garg':
+        if (now - g.lastMove > 600) { this.chase(m); m.frozen = false; return 250; }
+        m.frozen = true;
+        return 120;
+      case 'weaver': {
+        g.webs.set(m.y * g.W + m.x, now + 18000);
+        if (g.webs.size > 30) g.webs.delete(g.webs.keys().next().value);
+        if (near(7)) this.chase(m); else this.wander(m);
+        return 520;
+      }
+      case 'shade':
+        if (near(10)) this.chase(m); else this.wander(m);
+        return 560;
+      case 'mist':
+        if (near(8)) this.chase(m); else this.wander(m);
+        return 520;
+      case 'pendulum':
+        this.chase(m);
+        return Math.round(570 + 330 * Math.sin(el / 6000 * 2 * Math.PI));
+      case 'thief':
+        if (m.until && now < m.until) return 200;
+        if (g.hasKey) { this.chase(m); return 300; }
+        this.wander(m);
+        return 520;
+      case 'hunter':
+        this.chase(m);
+        return Math.max(250, 700 - 45 * Math.floor(el / 10000));
+      case 'mino': {
+        if (!m.nb) m.nb = g.t0 + 15000;
+        if (now >= m.nb) {
+          const dx = Math.sign(p.x - m.x), dy = Math.sign(p.y - m.y);
+          const tries = Math.abs(p.x - m.x) >= Math.abs(p.y - m.y) ? [[dx, 0], [0, dy]] : [[0, dy], [dx, 0]];
+          for (const [ax, ay] of tries) {
+            if (ax === 0 && ay === 0) continue;
+            const wx = m.x + ax, wy = m.y + ay, bx = wx + ax, by = wy + ay;
+            if (wx < 1 || wy < 1 || wx > g.W - 2 || wy > g.H - 2) continue;
+            if (bx < 1 || by < 1 || bx > g.W - 2 || by > g.H - 2) continue;
+            if (g.grid[wy * g.W + wx] === 1 && g.grid[by * g.W + bx] === 0) {
+              g.grid[wy * g.W + wx] = 0; g.ver++;
+              g.distP = bfs(g.grid, g.W, g.H, p.x, p.y);
+              this.moveTo(m, wx, wy);
+              this.say('牛頭魔王撞破了一面牆!', now);
+              m.nb = now + 15000;
+              return 330;
+            }
+          }
+        }
+        this.chase(m);
+        return 330;
+      }
+    }
+    return 500;
+  }
+};
+
+// ---------------- 畫面 ----------------
+const $ = (id) => document.getElementById(id);
+const cv = $('cv');
+const ctx = cv.getContext('2d');
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+function drawKey(cx, cy, s, color) {
+  ctx.save(); ctx.translate(cx - 12 * s, cy - 12 * s); ctx.scale(s, s);
+  ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(7.5, 12, 4, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(11.5, 12); ctx.lineTo(21, 12); ctx.moveTo(18, 12); ctx.lineTo(18, 15.5); ctx.moveTo(21, 12); ctx.lineTo(21, 14.5); ctx.stroke();
+  ctx.restore();
+}
+function drawDoor(cx, cy, color) {
+  ctx.save(); ctx.translate(cx - 20, cy - 20); ctx.scale(40 / 24, 40 / 24);
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.strokeRect(5, 2.5, 14, 19);
+  ctx.beginPath(); ctx.arc(15.5, 12, 1.2, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2, 21.5); ctx.lineTo(22, 21.5); ctx.stroke();
+  ctx.restore();
+}
+
+function draw() {
+  const g = Game.g;
+  if (!g) return;
+  const now = Date.now();
+  const T = g.theme;
+  let vis = 2;
+  for (const m of g.mons) if (m.type === 'mist' && Math.max(Math.abs(m.x - g.p.x), Math.abs(m.y - g.p.y)) <= 4) vis = 1;
+  const monAt = new Map();
+  for (const m of g.mons) {
+    if (m.hidden) continue;
+    const ch = Math.max(Math.abs(m.x - g.p.x), Math.abs(m.y - g.p.y));
+    if (m.type === 'shade' && !(ch <= 1 || (now % 2400) < 300)) continue;
+    const k = m.y * g.W + m.x;
+    if (!monAt.has(k)) monAt.set(k, m);
+  }
+  ctx.fillStyle = '#07080b';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  for (let vy = -VIEW_R; vy <= VIEW_R; vy++) for (let vx = -VIEW_R; vx <= VIEW_R; vx++) {
+    const x = g.p.x + vx, y = g.p.y + vy;
+    const ch = Math.max(Math.abs(vx), Math.abs(vy));
+    if (x < 0 || y < 0 || x >= g.W || y >= g.H || ch > vis) continue;
+    const px = (vx + VIEW_R) * TILE, py = (vy + VIEW_R) * TILE;
+    const cx = px + TILE / 2, cy = py + TILE / 2;
+    const i = y * g.W + x, val = g.grid[i];
+    ctx.globalAlpha = ch < vis ? 1 : 0.6;
+    if (val === 1 || val === 2) {
+      ctx.fillStyle = T[6]; ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(px, py + TILE - 8, TILE, 8);
+      ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(px, py, TILE, 2);
+      if (val === 2) {
+        if (g.hasKey) { ctx.fillStyle = 'rgba(143,232,168,0.18)'; ctx.fillRect(px, py, TILE, TILE); }
+        drawDoor(cx, cy, g.hasKey ? '#8fe8a8' : '#c9a24a');
+      }
+    } else {
+      ctx.fillStyle = T[5]; ctx.fillRect(px, py, TILE, TILE);
+      if (g.mud[i]) { ctx.fillStyle = 'rgba(78,58,32,0.8)'; ctx.beginPath(); ctx.ellipse(cx, cy, 20, 16, 0, 0, Math.PI * 2); ctx.fill(); }
+      const w = g.webs.get(i);
+      if (w && w > now) {
+        ctx.strokeStyle = 'rgba(232,232,244,0.55)'; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(px, py); ctx.lineTo(px + TILE, py + TILE); ctx.moveTo(px + TILE, py); ctx.lineTo(px, py + TILE);
+        ctx.moveTo(cx, py); ctx.lineTo(cx, py + TILE); ctx.moveTo(px, cy); ctx.lineTo(px + TILE, cy);
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, 21, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (!g.hasKey && g.key.x === x && g.key.y === y) drawKey(cx, cy, 38 / 24, '#f2b544');
+    }
+    const m = monAt.get(i);
+    if (m) {
+      ctx.globalAlpha *= (m.type === 'garg' && m.frozen) ? 0.75 : 1;
+      ctx.shadowColor = m.color; ctx.shadowBlur = 16;
+      ctx.fillStyle = m.color; ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = m.ink; ctx.font = '900 22px "Noto Serif TC", serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(m.glyph, cx, cy + 1);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // 玩家
+  const pcx = VIEW_R * TILE + TILE / 2, pcy = pcx;
+  ctx.shadowColor = 'rgba(242,181,68,0.75)'; ctx.shadowBlur = 22;
+  ctx.fillStyle = '#f7d38a'; ctx.beginPath(); ctx.arc(pcx, pcy, 17, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(242,181,68,0.35)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pcx, pcy, 19, 0, Math.PI * 2); ctx.stroke();
+  // 面向指示
+  ctx.fillStyle = '#5a3a00';
+  ctx.beginPath(); ctx.arc(pcx + g.facing[0] * 9, pcy + g.facing[1] * 9, 3, 0, Math.PI * 2); ctx.fill();
+  if (g.hasKey) drawKey(pcx, pcy + 1, 0.7, '#5a3a00');
+  // 燈光
+  const grd = ctx.createRadialGradient(pcx, pcy, 0, pcx, pcy, 170);
+  grd.addColorStop(0, 'rgba(255,196,110,0.14)'); grd.addColorStop(0.65, 'rgba(255,196,110,0.05)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, cv.width, cv.height);
+
+  // HUD
+  $('fogtag').style.display = vis === 1 ? 'block' : 'none';
+  const endT = g.over ? g.endAt : now;
+  const left = Math.max(0, TIME_LIMIT - (endT - g.t0));
+  const danger = left < 60000;
+  const tc = danger ? '#ff6b5e' : '#f2b544';
+  $('timeText').textContent = fmt(left / 1000);
+  $('timeText').style.color = tc;
+  $('timeBar').style.width = (left / TIME_LIMIT * 100) + '%';
+  $('timeBar').style.background = tc;
+  $('board').classList.toggle('danger', danger);
+  $('objective').textContent = g.hasKey ? '前往出口大門' : '尋找鑰匙';
+  $('keyIc').classList.toggle('have', g.hasKey);
+  const hot = now < g.msgUntil;
+  $('msg').textContent = hot ? g.msg : (g.hasKey ? '鑰匙到手,大門在迷宮外牆上。' : '四處探索,鑰匙藏在迷宮深處。');
+  $('msg').classList.toggle('hot', hot);
+  const cp = $('compass');
+  if (Game.compass) {
+    const tgt = g.hasKey ? g.door : g.key;
+    cp.style.display = 'block';
+    cp.style.transform = 'rotate(' + Math.round(Math.atan2(tgt.y - g.p.y, tgt.x - g.p.x) * 180 / Math.PI + 90) + 'deg)';
+  } else cp.style.display = 'none';
+}
+
+const UI = {
+  renderMenu() {
+    const box = $('tiers');
+    box.innerHTML = '';
+    for (let t = 0; t < 4; t++) {
+      const tier = document.createElement('div');
+      tier.className = 'tier';
+      tier.innerHTML = '<div class="tier-h"><b>第 ' + (t * 5 + 1) + '–' + (t * 5 + 5) + ' 關</b><span>' + (t + 1) + ' 隻怪物同時追捕</span></div>';
+      const grid = document.createElement('div');
+      grid.className = 'grid5';
+      for (let k = 1; k <= 5; k++) {
+        const n = t * 5 + k, th = THEMES[n - 1], sz = sizeOf(n), best = Game.cleared[n];
+        const b = document.createElement('button');
+        b.className = 'card';
+        b.innerHTML =
+          '<div style="display:flex;align-items:baseline;gap:10px"><span class="n">' + pad2(n) + '</span><span class="t">' + th[0] + '</span></div>' +
+          '<span class="s">' + sz.W + ' × ' + sz.H + ' 格</span>' +
+          '<span class="m">怪物:' + lineup(n).map(i => MONS[i].name).join('、') + '</span>' +
+          (best != null ? '<span class="done">通關 ' + fmt(best) + '</span>' : '');
+        b.addEventListener('click', () => Game.start(n));
+        grid.appendChild(b);
+      }
+      tier.appendChild(grid);
+      box.appendChild(tier);
+    }
+    $('clearedChip').textContent = '已通關 ' + Object.keys(Game.cleared).length + ' / 20';
+  },
+  showMenu() {
+    Game.g = null; Game.held = [];
+    $('overlay').classList.remove('show');
+    $('play').classList.add('hidden');
+    $('menu').classList.remove('hidden');
+    this.renderMenu();
+  },
+  showPlay(g) {
+    $('overlay').classList.remove('show');
+    $('menu').classList.add('hidden');
+    $('play').classList.remove('hidden');
+    const T = g.theme;
+    $('lvlNum').textContent = '第 ' + pad2(g.n) + ' 關';
+    $('themeName').textContent = T[0];
+    $('tags').innerHTML = '<span class="tag">' + g.W + ' × ' + g.H + ' 格</span><span class="tag">' + ALGO[T[1]] + '</span>' +
+      (T[4] > 0 ? '<span class="tag mud">' + T[7] + ':移動減速</span>' : '');
+    $('monCount').textContent = g.mons.length + ' 隻 · AI 各不相同';
+    $('roster').innerHTML = lineup(g.n).map(i => {
+      const m = MONS[i];
+      return '<div class="mon"><div class="glyph" style="background:' + m.color + ';color:' + m.ink + '">' + m.glyph + '</div>' +
+        '<div style="min-width:0"><div><span class="nm">' + m.name + '</span><span class="ai">' + m.ai + '</span></div>' +
+        '<div class="ds">' + m.desc + '</div></div></div>';
+    }).join('');
+    window.scrollTo(0, 0);
+  },
+  showResult(win, reason, used, n) {
+    $('rTag').textContent = win ? 'ESCAPED' : 'CAUGHT';
+    $('rTag').style.color = win ? '#8fe8a8' : '#ff6b5e';
+    $('rTitle').textContent = win ? (n === 20 ? '全部通關!' : '成功逃脫!') : '逃脫失敗';
+    $('rReason').textContent = reason;
+    $('rTime').textContent = '用時 ' + fmt(used);
+    $('resultBox').style.borderColor = win ? '#2f5a3c' : '#6a2a24';
+    $('rNext').classList.toggle('hidden', !(win && n < 20));
+    $('overlay').classList.add('show');
+    setTimeout(() => (win && n < 20 ? $('rNext') : $('rRetry')).focus(), 30);
+  }
+};
+
+// ---------------- 輸入 ----------------
+document.addEventListener('keydown', (e) => {
+  if (!Game.g) return;
+  if (e.key === 'Escape') { UI.showMenu(); return; }
+  if (Game.g.over) return;
+  const d = KEYMAP[e.key];
+  if (!d) return;
+  e.preventDefault();
+  if (!Game.held.includes(e.key)) Game.held.push(e.key);
+  const now = Date.now();
+  if (now >= Game.g.nextMove) Game.tryMove(d, now);
+});
+document.addEventListener('keyup', (e) => { Game.held = Game.held.filter(k => k !== e.key); });
+window.addEventListener('blur', () => { Game.held = []; });
+
+document.querySelectorAll('.dpad button').forEach(b => {
+  const k = b.dataset.k;
+  const release = () => { Game.held = Game.held.filter(x => x !== k); };
+  b.addEventListener('pointerdown', (e) => { e.preventDefault(); if (!Game.held.includes(k)) Game.held.push(k); });
+  b.addEventListener('pointerup', release);
+  b.addEventListener('pointerleave', release);
+  b.addEventListener('pointercancel', release);
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+
+$('btnRestart').addEventListener('click', () => { if (Game.g) Game.start(Game.g.n); });
+$('btnMenu').addEventListener('click', () => UI.showMenu());
+$('rRetry').addEventListener('click', () => { if (Game.g) Game.start(Game.g.n); });
+$('rNext').addEventListener('click', () => { if (Game.g && Game.g.n < 20) Game.start(Game.g.n + 1); });
+$('rMenu').addEventListener('click', () => UI.showMenu());
+
+try { Game.compass = localStorage.getItem('maze-escape-compass') === '1'; } catch (e) {}
+$('compassToggle').checked = Game.compass;
+$('compassToggle').addEventListener('change', (e) => {
+  Game.compass = e.target.checked;
+  try { localStorage.setItem('maze-escape-compass', Game.compass ? '1' : '0'); } catch (err) {}
+});
+try { Game.cleared = JSON.parse(localStorage.getItem('maze-escape-cleared') || '{}') || {}; } catch (e) { Game.cleared = {}; }
+
+setInterval(() => Game.tick(), 50);
+(function loop() { draw(); requestAnimationFrame(loop); })();
+UI.renderMenu();
+</script>
+</body>
+</html>
