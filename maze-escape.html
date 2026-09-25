@@ -11,29 +11,36 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
 <style>
 :root{
+  color-scheme:dark;
   --bg:#0e0f13;--panel:#16181e;--panel2:#1c1f27;--line:#2c2f38;--text:#ece6d8;--muted:#a9a293;--soft:#d9d2c2;
-  --amber:#f2b544;--danger:#ff6b5e;--ok:#8fe8a8;
+  --amber:#f2b544;--danger:#ff6b5e;--ok:#8fe8a8;--safe:#5fd0ff;--monster:#ff4d4d;
   --serif:"Noto Serif TC",serif;--sans:"Noto Sans TC",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
-:root{color-scheme:dark}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
-button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+button:disabled{cursor:default;opacity:.45}
 .board,.board canvas{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .mhud,.mmsg{display:none}
-button{font-family:inherit;cursor:pointer}
-button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-.wrap{max-width:1280px;margin:0 auto;padding:36px 40px}
+.wrap{max-width:1280px;margin:0 auto;padding:32px 40px}
 .eyebrow{font-size:13px;letter-spacing:.3em;color:var(--amber);font-weight:700}
 h1{margin:0;font-family:var(--serif);font-weight:900;font-size:48px;line-height:1.1}
 .sub{margin:0;font-size:15px;color:var(--muted)}
-.head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:18px}
 .chips{display:flex;gap:10px;flex-wrap:wrap}
 .chip{padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:14px;background:var(--panel)}
 .chip.gold{border-color:#5a4a22;background:#221c0e;color:var(--amber)}
 label.chip{display:flex;gap:8px;align-items:center;cursor:pointer}
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.legend .box{display:flex;flex-direction:column;gap:10px}
+.legend h3{margin:0;font-family:var(--serif);font-weight:600;font-size:16px}
+.lg-row{display:flex;flex-wrap:wrap;gap:8px 16px}
+.lg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)}
+.lg svg{flex-shrink:0}
+.lg small{color:var(--muted);font-size:12px}
 .tier{margin-bottom:16px}
-.tier-h{display:flex;gap:12px;align-items:baseline;margin-bottom:8px}
+.tier-h{display:flex;gap:12px;align-items:baseline;margin-bottom:8px;flex-wrap:wrap}
 .tier-h b{font-family:var(--serif);font-weight:600;font-size:17px}
 .tier-h span{font-size:13px;color:var(--muted)}
 .grid5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
@@ -44,53 +51,62 @@ label.chip{display:flex;gap:8px;align-items:center;cursor:pointer}
 .card .s{font-size:12px;color:var(--muted)}
 .card .m{font-size:13px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card .done{position:absolute;top:12px;right:12px;font-size:12px;padding:2px 8px;border-radius:999px;background:#1f3a28;color:#9be3b0}
-.play{display:flex;gap:40px;padding:40px;max-width:1280px;margin:0 auto}
-.left{width:540px;flex-shrink:0;display:flex;flex-direction:column;gap:16px}
+.play{display:flex;gap:40px;padding:28px 40px;max-width:1280px;margin:0 auto}
+.left{width:540px;flex-shrink:0;display:flex;flex-direction:column;gap:12px}
 .board{position:relative;width:540px;height:540px;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#07080b}
 .board.danger{border-color:#7a2b24}
 .board canvas{display:block;width:100%;height:100%}
-.fogtag{position:absolute;left:12px;top:12px;padding:4px 10px;border-radius:999px;background:rgba(20,30,36,.9);color:#bfe3ee;font-size:13px;display:none}
-.ctrl{display:flex;gap:24px;align-items:center}
-.dpad{display:grid;grid-template-columns:repeat(3,48px);gap:6px}
-.dpad button{height:48px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
-.hint{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);line-height:1.6}
-.hint b{color:var(--text)}
-.right{flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.fx{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.fx span{padding:3px 10px;border-radius:999px;font-size:13px;font-weight:500;background:rgba(14,15,19,.88)}
+.fx .lives{margin-left:auto;color:#ff8fa0}
+.ctrl{display:flex;gap:16px;align-items:flex-start}
+.dpad{display:grid;grid-template-columns:repeat(3,44px);gap:6px;flex-shrink:0}
+.dpad button{height:44px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.inv{flex-grow:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.ibtn{height:44px;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--text);text-align:left;font-size:14px}
+.ibtn .nm{flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn .ct{font-variant-numeric:tabular-nums;font-weight:700}
+.ibtn kbd{font-family:var(--sans);font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.hex{width:26px;height:28px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:inline-flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;font-size:14px;color:#17130a;flex-shrink:0}
+.right{flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:12px}
 .lvl{font-size:13px;letter-spacing:.25em;color:var(--amber);font-weight:700}
-h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:1.15}
+h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:1.15}
 .tags{display:flex;gap:8px;flex-wrap:wrap}
 .tag{padding:4px 10px;border-radius:6px;background:var(--panel2);font-size:13px;color:var(--soft)}
 .tag.mud{background:#2a2114;color:#e5c38e}
+.tag.safe{background:#0d2632;color:#9fe3ff}
+.tag.trap{background:#2a2622;color:#d6cbbb}
 .row{display:flex;gap:14px}
-.box{padding:16px 18px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.box{padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
 .timer{flex-grow:1;display:flex;flex-direction:column;gap:10px}
 .timer .top{display:flex;justify-content:space-between;align-items:baseline}
 .timer .lab{font-size:14px;color:var(--muted)}
-.timer .val{font-family:var(--serif);font-weight:900;font-size:40px;line-height:1;color:var(--amber)}
+.timer .val{font-family:var(--serif);font-weight:900;font-size:38px;line-height:1;color:var(--amber);font-variant-numeric:tabular-nums}
 .bar{height:8px;border-radius:4px;background:#262932;overflow:hidden}
 .bar i{display:block;height:8px;background:var(--amber);border-radius:4px;width:100%}
 .obj{width:240px;display:flex;gap:12px;align-items:center}
-.keyic{width:48px;height:48px;border-radius:50%;background:#262932;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6b6f7a}
+.keyic{width:44px;height:44px;border-radius:50%;background:#262932;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6b6f7a}
 .keyic.have{background:#3a2d0c;color:var(--amber)}
 .obj .lab{font-size:13px;color:var(--muted)}
 .obj .val{font-size:16px;font-weight:700}
 #compass{flex-shrink:0;color:var(--amber);display:none}
-.msg{padding:12px 16px;border-radius:10px;background:var(--panel);color:var(--muted);font-size:15px;font-weight:500;min-height:46px}
+.msg{padding:10px 16px;border-radius:10px;background:var(--panel);color:var(--muted);font-size:15px;font-weight:500;min-height:44px}
 .msg.hot{background:#2a2210;color:#f5d58a}
-.msg.safe{background:#0f2630;color:#9fe3ff}
-.tag.safe{background:#10262f;color:#9fe3ff}
-.chip.safe{border-color:#1f4a5a;background:#0f2028;color:#9fe3ff}
+.msg.safe{background:#0d2632;color:#9fe3ff}
 .roster-h{display:flex;justify-content:space-between;align-items:baseline}
 .roster-h b{font-family:var(--serif);font-weight:600;font-size:18px}
 .roster-h span{font-size:13px;color:var(--muted)}
-.roster{display:flex;flex-direction:column;gap:10px;flex-grow:1}
-.mon{display:flex;gap:14px;align-items:center;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
-.glyph{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;font-size:20px;flex-shrink:0}
-.mon .nm{font-size:16px;font-weight:700}
-.mon .ai{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid #3a3d48;color:var(--soft);margin-left:8px}
-.mon .ds{font-size:13px;color:var(--muted);line-height:1.5}
+.roster{display:flex;flex-direction:column;gap:8px;flex-grow:1}
+.mon{display:flex;gap:12px;align-items:center;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.glyph{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;font-size:19px;flex-shrink:0;box-shadow:0 0 0 3px var(--monster)}
+.mon .nm{font-size:15px;font-weight:700}
+.mon .ai{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid #3a3d48;color:var(--soft)}
+.mon .ds{font-size:13px;color:var(--muted);line-height:1.45}
+.mon .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.counter{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--soft)}
+.counter .hex{width:18px;height:20px;font-size:11px}
 .btns{display:flex;gap:12px;flex-wrap:wrap}
-.btn{height:48px;padding:0 22px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px;font-weight:500}
+.btn{height:46px;padding:0 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px;font-weight:500}
 .btn.gold{border-color:#5a4a22;background:#221c0e;color:var(--amber);font-weight:700}
 .btn.solid{border:none;background:var(--amber);color:#1a1406;font-weight:700}
 .overlay{position:fixed;inset:0;background:rgba(6,7,10,.78);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
@@ -100,14 +116,13 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
 .result p{margin:0}
 .hidden{display:none!important}
 @media (max-width:1100px){
-  .play{flex-direction:column;padding:16px;gap:20px}
-  .left{width:100%;align-items:center}
+  .play{flex-direction:column;padding:12px 16px;gap:16px}
+  .left{width:100%;align-items:center;gap:8px}
   .board{width:min(540px,100%);height:auto;aspect-ratio:1}
   .grid5{grid-template-columns:repeat(2,minmax(0,1fr))}
   .wrap{padding:24px 16px}
   h1{font-size:36px}
-}
-@media (max-width:1100px){
+  .legend{grid-template-columns:1fr}
   .mhud{display:flex;align-items:center;gap:10px;width:min(540px,100%)}
   .mh-lvl{font-family:var(--serif);font-weight:900;font-size:22px;color:var(--amber)}
   .mh-name{font-weight:700;font-size:15px;flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -115,22 +130,20 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
   .mh-key{width:34px;height:34px;border-radius:50%;background:#262932;color:#6b6f7a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .mh-key.have{background:#3a2d0c;color:var(--amber)}
   .mh-menu{height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:14px}
-  .mmsg{display:block;width:min(540px,100%);padding:8px 12px;border-radius:8px;background:var(--panel);color:var(--muted);font-size:14px;min-height:36px}
+  .mmsg{display:block;width:min(540px,100%);padding:7px 12px;border-radius:8px;background:var(--panel);color:var(--muted);font-size:14px;min-height:34px}
   .mmsg.hot{background:#2a2210;color:#f5d58a}
-  .mmsg.safe{background:#0f2630;color:#9fe3ff}
+  .mmsg.safe{background:#0d2632;color:#9fe3ff}
   .right .lvl,.right h2,.right .tags,.right .row,.right .msg{display:none}
-  .left{gap:10px}
-  .hint{display:none}
-  .ctrl{justify-content:center}
-  .dpad{grid-template-columns:repeat(3,64px);gap:8px}
-  .dpad button{height:64px;border-radius:12px}
-}
-@media (max-width:1100px) and (max-height:700px){
+  .ctrl{width:min(540px,100%)}
   .dpad{grid-template-columns:repeat(3,54px)}
-  .dpad button{height:54px}
+  .dpad button{height:54px;border-radius:10px}
+  .inv{grid-template-columns:1fr 1fr}
+  .ibtn{height:54px;padding:0 10px;justify-content:center;gap:8px}
+  .ibtn .nm,.ibtn kbd{display:none}
+  .ibtn .ct{font-size:16px}
 }
 @media (max-width:560px){
-  .grid5{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .grid5{gap:10px}
   .card{min-height:96px;padding:10px 12px}
   .chips{gap:6px}
   .chip{padding:6px 10px;font-size:13px}
@@ -150,11 +163,29 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
     <div class="chips">
       <span class="chip">每關限時 5:00</span>
       <span class="chip">視野只有 2 格</span>
-      <span class="chip">鑰匙 → 大門</span>
       <span class="chip">每 5 關怪物 +1</span>
-      <span class="chip safe">安全區可躲避</span>
+      <span class="chip">第 6 關起有道具</span>
+      <span class="chip">第 11 關起有陷阱</span>
       <label class="chip"><input type="checkbox" id="compassToggle"> 顯示羅盤(簡單模式)</label>
-      <span class="chip gold" id="clearedChip">已通關 0 / 20</span>
+      <span class="chip gold" id="clearedChip">已通關 0 / 25</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="box">
+      <h3>地圖圖例</h3>
+      <div class="lg-row">
+        <span class="lg"><svg width="30" height="30" viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" rx="10" fill="rgba(95,208,255,0.25)" stroke="#5fd0ff" stroke-width="4"/><path d="M30 15l13 6v10c0 9-6 14-13 17c-7-3-13-8-13-17V21z" fill="none" stroke="#5fd0ff" stroke-width="4" stroke-linejoin="round"/></svg>安全區 <small>方形・盾牌</small></span>
+        <span class="lg"><svg width="30" height="30" viewBox="0 0 60 60"><circle cx="30" cy="30" r="21" fill="#9aa3ad"/><circle cx="30" cy="30" r="25" fill="none" stroke="#ff4d4d" stroke-width="5"/></svg>怪物 <small>圓形・紅圈</small></span>
+        <span class="lg"><svg width="30" height="30" viewBox="0 0 60 60"><path d="M30 6l21 12v24L30 54L9 42V18z" fill="#ffd35c" stroke="#fff" stroke-width="4"/></svg>道具 <small>六角形</small></span>
+        <span class="lg"><svg width="30" height="30" viewBox="0 0 60 60"><circle cx="30" cy="30" r="20" fill="rgba(0,0,0,0.45)" stroke="#8a8378" stroke-width="3"/><path d="M14 26l5-7 5 7 6-7 6 7 5-7 5 7M14 34l5 7 5-7 6 7 6-7 5 7 5-7" fill="none" stroke="#d6cbbb" stroke-width="3" stroke-linejoin="round"/></svg>陷阱 <small>困住 3 秒</small></span>
+        <span class="lg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f2b544" stroke-width="2.2" stroke-linecap="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M18 12v3.5M21 12v2.5"/></svg>鑰匙</span>
+        <span class="lg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#c9a24a" stroke-width="2" stroke-linecap="round"><rect x="5" y="2.5" width="14" height="19" rx="1.5"/><circle cx="15.5" cy="12" r="1.2"/></svg>大門</span>
+      </div>
+    </div>
+    <div class="box">
+      <h3>道具(依本關怪物配置)</h3>
+      <div class="lg-row" id="itemLegend"></div>
     </div>
   </div>
   <div id="tiers"></div>
@@ -173,8 +204,8 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
       </div>
       <div class="mmsg" id="mMsg"></div>
       <div class="board" id="board">
-        <canvas id="cv" width="540" height="540" aria-label="迷宮畫面:用方向鍵或 WASD 移動"></canvas>
-        <div class="fogtag" id="fogtag">迷霧籠罩:視野 1 格</div>
+        <canvas id="cv" width="540" height="540" aria-label="迷宮畫面:用方向鍵、WASD 或在畫面上滑動來移動"></canvas>
+        <div class="fx" id="fx"></div>
       </div>
       <div class="ctrl">
         <div class="dpad">
@@ -185,12 +216,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
           <button data-k="ArrowDown" aria-label="向下"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
           <button data-k="ArrowRight" aria-label="向右"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
         </div>
-        <div class="hint">
-          <span>用 <b>方向鍵 / WASD</b> 移動,按住可連續前進。</span>
-          <span>手機:在迷宮上滑動,或按住方向鍵。按 <b>Esc</b> 返回選單。</span>
-          <span>泥沼、蛛網會讓你變慢;怪物只在燈光範圍內可見。</span>
-          <span>藍色<b style="color:#9fe3ff">安全區</b>在黑暗中也看得到:怪物進不來,但每個只能躲 12 秒。</span>
-        </div>
+        <div class="inv" id="inv"></div>
       </div>
     </div>
     <div class="right">
@@ -205,7 +231,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
           <div class="bar"><i id="timeBar"></i></div>
         </div>
         <div class="box obj">
-          <div class="keyic" id="keyIc"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M18 12v3.5M21 12v2.5"/></svg></div>
+          <div class="keyic" id="keyIc"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M18 12v3.5M21 12v2.5"/></svg></div>
           <div style="flex-grow:1"><div class="lab">目標</div><div class="val" id="objective">尋找鑰匙</div></div>
           <svg id="compass" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V4M6 10l6-6 6 6"/></svg>
         </div>
@@ -239,8 +265,13 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
 'use strict';
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const KEYMAP = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0], W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0] };
+const LEVELS = 25;
 const TIME_LIMIT = 300000;
-const VIEW_R = 4, TILE = 60;
+const SAFE_TIME = 12000;
+const ITEM_FROM = 6;   // 第 6 關起有道具
+const TRAP_FROM = 11;  // 第 11 關起有陷阱
+const TRAP_TIME = 3000;
+const BASE_VIS = 2;
 
 // [名稱, 演算法, 迴路比例, 房間數, 泥沼比例, 地板色, 牆色, 泥沼名稱]
 const THEMES = [
@@ -263,31 +294,54 @@ const THEMES = [
   ['鐘樓機關', 'dfs', 0.3, 2, 0, '#5b4b37', '#291f14', ''],
   ['寶庫迷宮', 'prim', 0.15, 6, 0, '#5b5131', '#28220e', ''],
   ['獵場荒原', 'kruskal', 0.35, 3, 0.05, '#554b39', '#282216', '流沙'],
-  ['魔王深淵', 'grow', 0.3, 6, 0.03, '#4b2b35', '#1d0a10', '血池']
+  ['魔王深淵', 'grow', 0.3, 6, 0.03, '#4b2b35', '#1d0a10', '血池'],
+  ['水晶迴廊', 'prim', 0.2, 4, 0, '#46536e', '#1a2034', ''],
+  ['鎖鏈監牢', 'dfs', 0.2, 4, 0, '#4f4a45', '#1e1b19', ''],
+  ['蝙蝠洞穴', 'kruskal', 0.3, 2, 0.05, '#3d3530', '#17110e', '滴水'],
+  ['無光廢墟', 'grow', 0.25, 5, 0.04, '#3f3a3a', '#141111', '碎石'],
+  ['深淵王座', 'dfs', 0.35, 7, 0.04, '#43223a', '#170712', '黑沼']
 ];
 const ALGO = { dfs: '深度優先 · 長走廊', prim: 'Prim · 多岔路', kruskal: 'Kruskal · 均勻分岔', grow: '生長樹 · 混合型' };
 
+// 道具:use=true 的放進背包手動使用,其餘撿到立即生效
+const ITEMS = {
+  lamp:      { name: '燈油',     glyph: '光', color: '#ffd35c', use: true,  desc: '視野 +3 格,持續 20 秒' },
+  hourglass: { name: '沙漏',     glyph: '時', color: '#c9a8ff', use: false, desc: '時間 +1 分鐘(撿到立即生效)' },
+  shield:    { name: '護盾',     glyph: '盾', color: '#7ff0c8', use: true,  desc: '無敵 5 秒,也不怕陷阱與竊賊' },
+  stun:      { name: '暈眩彈',   glyph: '暈', color: '#ff9ad5', use: true,  desc: '最近的 1 隻怪物暈眩 10 秒' },
+  heart:     { name: '生命之心', glyph: '命', color: '#ff6b81', use: false, desc: '增加 1 條命(撿到立即生效)' },
+  scroll:    { name: '傳送卷軸', glyph: '移', color: '#8fb8ff', use: true,  desc: '隨機瞬移到某個安全區旁' }
+};
+const ITEM_KEYS = Object.keys(ITEMS);
+const USABLE = ['lamp', 'shield', 'stun', 'scroll'];
+
+// counter:最能剋制這隻怪物的道具
 const MONS = [
-  { id: 'wisp', name: '遊魂', glyph: '魂', color: '#8fd3c7', ink: '#10201d', ai: '漫遊', desc: '隨機遊蕩,5 格內察覺到你就追上來。' },
-  { id: 'golem', name: '石魔', glyph: '石', color: '#b8a58c', ink: '#1f1a12', ai: '追蹤', desc: '永遠沿最短路徑追你,但步伐沉重緩慢。' },
-  { id: 'watch', name: '巡夜人', glyph: '巡', color: '#e6c86e', ink: '#241c05', ai: '巡邏', desc: '在迷宮各處巡邏,6 格內發現你就加速追擊。' },
-  { id: 'ambush', name: '伏擊者', glyph: '伏', color: '#e88fb0', ink: '#2a0d18', ai: '伏擊', desc: '預判你的方向,繞到你前方 4 格埋伏。' },
-  { id: 'hound', name: '獵犬', glyph: '犬', color: '#d99a5b', ink: '#26160a', ai: '嗅跡', desc: '沿著你走過的足跡一步步快速追來。' },
-  { id: 'phantom', name: '幽影', glyph: '幽', color: '#a9b7ff', ink: '#121833', ai: '穿牆', desc: '能直接穿過牆壁朝你飄來,但移動很慢。' },
-  { id: 'blink', name: '閃現魔', glyph: '閃', color: '#c49cff', ink: '#1d0f33', ai: '瞬移', desc: '每 12 秒瞬移到你附近 5–9 格的位置。' },
-  { id: 'warden', name: '守門人', glyph: '守', color: '#7fb2e0', ink: '#0c1a28', ai: '守衛', desc: '守在鑰匙旁;你拿到鑰匙後改守出口。' },
-  { id: 'berserk', name: '狂戰士', glyph: '狂', color: '#ff7a5c', ink: '#2a0c05', ai: '衝鋒', desc: '6 格內發現你就猛衝 3 秒,之後喘息 2 秒。' },
-  { id: 'flank', name: '夾擊者', glyph: '夾', color: '#6fd48a', ink: '#0a2412', ai: '包夾', desc: '與同伴配合,從另一側包抄你。' },
-  { id: 'echo', name: '回聲', glyph: '聲', color: '#d0d0d0', ink: '#1a1a1a', ai: '重播', desc: '8 秒後重走你的路線,停留太久就會被追上。' },
-  { id: 'oracle', name: '先知', glyph: '知', color: '#f0e08a', ink: '#262006', ai: '攔截', desc: '算出你前往目標的路線,在半路攔截。' },
-  { id: 'garg', name: '石像鬼', glyph: '像', color: '#9aa3ad', ink: '#14181c', ai: '凝視', desc: '你移動時它不動;你一停下它就高速逼近。' },
-  { id: 'weaver', name: '織網蛛', glyph: '蛛', color: '#c7b3d9', ink: '#1e1328', ai: '織網', desc: '沿途留下蛛網,踩到蛛網移動變慢。' },
-  { id: 'shade', name: '暗影', glyph: '影', color: '#6c6f8a', ink: '#ffffff', ai: '隱形', desc: '幾乎看不見,只有貼身或閃爍時才現形。' },
-  { id: 'mist', name: '迷霧妖', glyph: '霧', color: '#9cc9d6', ink: '#0d2026', ai: '遮蔽', desc: '靠近 4 格內時,你的視野縮小為 1 格。' },
-  { id: 'pendulum', name: '鐘擺怪', glyph: '擺', color: '#e0a95c', ink: '#261805', ai: '變速', desc: '速度以 6 秒為週期忽快忽慢。' },
-  { id: 'thief', name: '竊鑰賊', glyph: '賊', color: '#8fe0a0', ink: '#0b2412', ai: '竊取', desc: '不會殺你,但會搶走鑰匙藏到別處。' },
-  { id: 'hunter', name: '獵王', glyph: '獵', color: '#ff9d7a', ink: '#2a0f05', ai: '加速', desc: '持續追蹤,每 10 秒速度提升一級。' },
-  { id: 'mino', name: '牛頭魔王', glyph: '魔', color: '#ff5c6c', ink: '#2a0508', ai: '破牆', desc: '高速追擊,每 15 秒撞破一面牆衝向你。' }
+  { id: 'wisp', name: '遊魂', glyph: '魂', color: '#8fd3c7', ink: '#10201d', ai: '漫遊', counter: 'heart', desc: '隨機遊蕩,5 格內察覺到你就追上來。' },
+  { id: 'golem', name: '石魔', glyph: '石', color: '#b8a58c', ink: '#1f1a12', ai: '追蹤', counter: 'hourglass', desc: '永遠沿最短路徑追你,但步伐沉重緩慢。' },
+  { id: 'watch', name: '巡夜人', glyph: '巡', color: '#e6c86e', ink: '#241c05', ai: '巡邏', counter: 'stun', desc: '在迷宮各處巡邏,6 格內發現你就加速追擊。' },
+  { id: 'ambush', name: '伏擊者', glyph: '伏', color: '#e88fb0', ink: '#2a0d18', ai: '伏擊', counter: 'lamp', desc: '預判你的方向,繞到你前方 4 格埋伏。' },
+  { id: 'hound', name: '獵犬', glyph: '犬', color: '#d99a5b', ink: '#26160a', ai: '嗅跡', counter: 'scroll', desc: '沿著你走過的足跡一步步快速追來。' },
+  { id: 'phantom', name: '幽影', glyph: '幽', color: '#a9b7ff', ink: '#121833', ai: '穿牆', counter: 'lamp', desc: '能直接穿過牆壁朝你飄來,但移動很慢。' },
+  { id: 'blink', name: '閃現魔', glyph: '閃', color: '#c49cff', ink: '#1d0f33', ai: '瞬移', counter: 'stun', desc: '每 12 秒瞬移到你附近 5–9 格的位置。' },
+  { id: 'warden', name: '守門人', glyph: '守', color: '#7fb2e0', ink: '#0c1a28', ai: '守衛', counter: 'stun', desc: '守在鑰匙旁;你拿到鑰匙後改守出口。' },
+  { id: 'berserk', name: '狂戰士', glyph: '狂', color: '#ff7a5c', ink: '#2a0c05', ai: '衝鋒', counter: 'shield', desc: '6 格內發現你就猛衝 3 秒,之後喘息 2 秒。' },
+  { id: 'flank', name: '夾擊者', glyph: '夾', color: '#6fd48a', ink: '#0a2412', ai: '包夾', counter: 'scroll', desc: '與同伴配合,從另一側包抄你。' },
+  { id: 'echo', name: '回聲', glyph: '聲', color: '#d0d0d0', ink: '#1a1a1a', ai: '重播', counter: 'heart', desc: '8 秒後重走你的路線,停留太久就會被追上。' },
+  { id: 'oracle', name: '先知', glyph: '知', color: '#f0e08a', ink: '#262006', ai: '攔截', counter: 'stun', desc: '算出你前往目標的路線,在半路攔截。' },
+  { id: 'garg', name: '石像鬼', glyph: '像', color: '#9aa3ad', ink: '#14181c', ai: '凝視', counter: 'stun', desc: '你移動時它不動;你一停下它就高速逼近。' },
+  { id: 'weaver', name: '織網蛛', glyph: '蛛', color: '#c7b3d9', ink: '#1e1328', ai: '織網', counter: 'scroll', desc: '沿途留下蛛網,踩到蛛網移動變慢。' },
+  { id: 'shade', name: '暗影', glyph: '影', color: '#6c6f8a', ink: '#ffffff', ai: '隱形', counter: 'lamp', desc: '幾乎看不見,只有貼身或閃爍時才現形。' },
+  { id: 'mist', name: '迷霧妖', glyph: '霧', color: '#9cc9d6', ink: '#0d2026', ai: '遮蔽', counter: 'lamp', desc: '靠近 4 格內時,你的視野縮小為 1 格。' },
+  { id: 'pendulum', name: '鐘擺怪', glyph: '擺', color: '#e0a95c', ink: '#261805', ai: '變速', counter: 'hourglass', desc: '速度以 6 秒為週期忽快忽慢。' },
+  { id: 'thief', name: '竊鑰賊', glyph: '賊', color: '#8fe0a0', ink: '#0b2412', ai: '竊取', counter: 'shield', desc: '不會殺你,但會搶走鑰匙藏到別處。' },
+  { id: 'hunter', name: '獵王', glyph: '獵', color: '#ff9d7a', ink: '#2a0f05', ai: '加速', counter: 'hourglass', desc: '持續追蹤,每 10 秒速度提升一級。' },
+  { id: 'mino', name: '牛頭魔王', glyph: '魔', color: '#ff5c6c', ink: '#2a0508', ai: '破牆', counter: 'shield', desc: '高速追擊,每 15 秒撞破一面牆衝向你。' },
+  { id: 'mirror', name: '鏡像魔', glyph: '鏡', color: '#b9d4e6', ink: '#0e1a22', ai: '鏡像', counter: 'stun', desc: '在迷宮另一側模仿你的動作,靠近就撲上來。' },
+  { id: 'trapper', name: '陷阱師', glyph: '陷', color: '#c8b27a', ink: '#221a06', ai: '佈陷', counter: 'scroll', desc: '一路追你,每 7 秒在腳下佈下新陷阱。' },
+  { id: 'swarm', name: '蝠群', glyph: '蝠', color: '#a58fa0', ink: '#1c1219', ai: '亂飛', counter: 'shield', desc: '極快但飛行路線雜亂,一半時間在亂竄。' },
+  { id: 'devour', name: '噬光者', glyph: '噬', color: '#7fa0a8', ink: '#0c1618', ai: '吞噬', counter: 'hourglass', desc: '專門吞掉安全區,讓你無處可躲。' },
+  { id: 'abyss', name: '深淵之王', glyph: '淵', color: '#d05cff', ink: '#1a0524', ai: '黑暗', counter: 'lamp', desc: '高速追擊,每 20 秒讓黑暗降臨,視野縮成 1 格。' }
 ];
 
 function rng(seed) {
@@ -305,11 +359,12 @@ function lineup(n) {
   for (let i = 0; i < c; i++) out.push(n - 1 - i);
   return out;
 }
-const SAFE_TIME = 12000;
 function safeCount(n) { return 2 + Math.ceil(n / 3); }
+function trapCount(n) { return n >= TRAP_FROM ? Math.min(12, 2 + Math.floor((n - 10) * 0.6)) : 0; }
 function sizeOf(n) { return { W: 13 + 2 * (n - 1), H: 11 + 2 * (n - 1) }; }
 function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 function fmt(sec) { const s = Math.max(0, Math.ceil(sec)); return Math.floor(s / 60) + ':' + pad2(s % 60); }
+function hexHTML(t, cls) { const it = ITEMS[t]; return '<span class="hex' + (cls ? ' ' + cls : '') + '" style="background:' + it.color + '">' + it.glyph + '</span>'; }
 
 function bfs(g, W, H, sx, sy) {
   const d = new Int16Array(W * H).fill(-1);
@@ -329,6 +384,26 @@ function bfs(g, W, H, sx, sy) {
     }
   }
   return d;
+}
+
+// 最遠點取樣:讓東西盡量分散,也遠離 anchors
+function spread(W, pool, count, anchors, r) {
+  pool = pool.slice();
+  const out = [];
+  while (out.length < count && pool.length) {
+    let bi = -1, bs = -1;
+    for (let t = 0; t < pool.length; t++) {
+      const x = pool[t] % W, y = Math.floor(pool[t] / W);
+      let md = 1e9;
+      for (const a of anchors) md = Math.min(md, Math.abs(a.x - x) + Math.abs(a.y - y));
+      for (const a of out) md = Math.min(md, Math.abs(a.x - x) + Math.abs(a.y - y));
+      const sc = md + r() * 3;
+      if (sc > bs) { bs = sc; bi = t; }
+    }
+    const i = pool.splice(bi, 1)[0];
+    out.push({ x: i % W, y: Math.floor(i / W) });
+  }
+  return out;
 }
 
 function buildLevel(n) {
@@ -428,25 +503,40 @@ function buildLevel(n) {
     const ci = cand.splice(j, 1)[0];
     return { m: mi, x: ci % W, y: Math.floor(ci / W) };
   });
-  // 安全區:盡量分散在迷宮各處(最遠點取樣)
   const taken = new Set(spawns.map(s => I(s.x, s.y)));
-  taken.add(ki); taken.add(I(doorIn.x, doorIn.y));
-  const pool = floors.filter(i => ds[i] >= 5 && !taken.has(i));
-  const safes = [];
-  const nz = safeCount(n);
-  while (safes.length < nz && pool.length) {
-    let bi = -1, bs = -1;
-    for (let t = 0; t < pool.length; t++) {
-      const x = pool[t] % W, y = Math.floor(pool[t] / W);
-      let md = Math.abs(x - 1) + Math.abs(y - 1);
-      for (const s of safes) md = Math.min(md, Math.abs(s.x - x) + Math.abs(s.y - y));
-      const sc = md + r() * 3;
-      if (sc > bs) { bs = sc; bi = t; }
-    }
-    const i = pool.splice(bi, 1)[0];
-    safes.push({ x: i % W, y: Math.floor(i / W) });
+  taken.add(ki); taken.add(I(doorIn.x, doorIn.y)); taken.add(I(1, 1));
+  const start = { x: 1, y: 1 };
+
+  // 安全區
+  const safes = spread(W, floors.filter(i => ds[i] >= 5 && !taken.has(i)), safeCount(n), [start], r);
+  for (const s of safes) taken.add(I(s.x, s.y));
+
+  // 道具:每隻怪物配 2 個(1 個剋制它的 + 1 個隨機)
+  const items = [];
+  if (n >= ITEM_FROM) {
+    const kinds = [];
+    for (const mi of lu) { kinds.push(MONS[mi].counter); kinds.push(ITEM_KEYS[Math.floor(r() * ITEM_KEYS.length)]); }
+    const pts = spread(W, floors.filter(i => ds[i] >= 3 && !taken.has(i)), kinds.length, [start].concat(safes), r);
+    pts.forEach((p, k) => { items.push({ x: p.x, y: p.y, type: kinds[k] }); taken.add(I(p.x, p.y)); });
   }
-  return { W, H, grid: g, mud, key, door, doorIn, spawns, safes, theme: T };
+
+  // 陷阱:放在走廊上
+  const traps = [];
+  const tc = trapCount(n);
+  if (tc) {
+    const corr = floors.filter(i => {
+      if (ds[i] < 6 || taken.has(i)) return false;
+      const x = i % W, y = Math.floor(i / W);
+      let o = 0;
+      for (const [dx, dy] of DIRS) if (g[I(x + dx, y + dy)] === 0) o++;
+      return o === 2;
+    });
+    for (let k = 0; k < tc && corr.length; k++) {
+      const ci = corr.splice(Math.floor(r() * corr.length), 1)[0];
+      traps.push(ci);
+    }
+  }
+  return { W, H, grid: g, mud, key, door, doorIn, spawns, safes, items, traps, theme: T };
 }
 
 // ---------------- 遊戲核心 ----------------
@@ -462,18 +552,22 @@ const Game = {
     const g = Object.assign({}, L, {
       n, hasKey: false, p: { x: 1, y: 1 }, facing: [1, 0], trail: [{ x: 1, y: 1, t: now }],
       t0: now, lastMove: now, nextMove: now, webs: new Map(), ver: 0, cache: new Map(),
-      msg: '找到鑰匙,再前往出口大門!', msgUntil: now + 4000, over: false
+      msg: '找到鑰匙,再前往出口大門!', msgUntil: now + 4000, over: false,
+      bonus: 0, lives: 0, lampUntil: 0, invUntil: 0, stuckUntil: 0, darkUntil: 0, trapperCount: 0,
+      inv: { lamp: 0, shield: 0, stun: 0, scroll: 0 }
     });
     g.mons = L.spawns.map((s, i) => {
       const M = MONS[s.m];
-      return Object.assign({}, M, { type: M.id, x: s.x, y: s.y, px: s.x, py: s.y, next: now + 2500 + i * 400, hidden: M.id === 'echo' });
+      return Object.assign({}, M, { type: M.id, x: s.x, y: s.y, px: s.x, py: s.y, next: now + 2500 + i * 400, hidden: M.id === 'echo', stunUntil: 0 });
     });
     g.safes = L.safes.map(s => ({ x: s.x, y: s.y, energy: SAFE_TIME, active: true }));
     g.safeAt = new Map(g.safes.map(z => [z.y * g.W + z.x, z]));
+    g.items = new Map(L.items.map(it => [it.y * g.W + it.x, it.type]));
+    g.traps = new Set(L.traps);
     g.lastTick = now;
     this.g = g;
-    this.rebuildMG();
     this.held = [];
+    this.rebuildMG();
     UI.showPlay(g);
   },
 
@@ -492,6 +586,10 @@ const Game = {
     const g = this.g;
     const z = g.safeAt.get(g.p.y * g.W + g.p.x);
     return z && z.active ? z : null;
+  },
+  timeLeft(now) {
+    const g = this.g;
+    return Math.max(0, TIME_LIMIT + g.bonus - ((g.over ? g.endAt : now) - g.t0));
   },
 
   end(win, reason) {
@@ -512,7 +610,7 @@ const Game = {
     const g = this.g;
     if (!g || g.over) return;
     const now = Date.now();
-    if (now - g.t0 >= TIME_LIMIT) { this.end(false, '時間到!五分鐘內沒能逃出迷宮。'); return; }
+    if (this.timeLeft(now) <= 0) { this.end(false, '時間到!沒能在時限內逃出迷宮。'); return; }
     const dt = now - g.lastTick;
     g.lastTick = now;
     const z = this.safeZone();
@@ -536,6 +634,7 @@ const Game = {
     const g = this.g;
     if (!g || g.over) return;
     g.facing = d;
+    if (now < g.stuckUntil) return;
     const nx = g.p.x + d[0], ny = g.p.y + d[1];
     if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H) return;
     const v = g.grid[ny * g.W + nx];
@@ -552,13 +651,88 @@ const Game = {
     if (w && w > now) cost *= 2.4;
     g.p = { x: nx, y: ny };
     g.nextMove = now + cost;
+    this.enterCell(now);
+  },
+
+  // 玩家進入新格子(走路或傳送)後的處理
+  enterCell(now) {
+    const g = this.g;
+    const i = g.p.y * g.W + g.p.x;
     g.lastMove = now;
-    g.trail.push({ x: nx, y: ny, t: now });
-    if (!g.hasKey && nx === g.key.x && ny === g.key.y) { g.hasKey = true; this.say('拿到鑰匙了!快找出口大門!', now); }
-    g.distP = bfs(g.mg, g.W, g.H, nx, ny);
+    g.trail.push({ x: g.p.x, y: g.p.y, t: now });
+    if (!g.hasKey && g.p.x === g.key.x && g.p.y === g.key.y) { g.hasKey = true; this.say('拿到鑰匙了!快找出口大門!', now); }
+    const it = g.items.get(i);
+    if (it) { g.items.delete(i); this.pickup(it, now); }
+    if (g.traps.has(i)) {
+      g.traps.delete(i);
+      if (now < g.invUntil) this.say('護盾擋下了陷阱!', now);
+      else { g.stuckUntil = now + TRAP_TIME; this.say('踩到陷阱!被困住 3 秒!', now); }
+    }
+    g.distP = bfs(g.mg, g.W, g.H, g.p.x, g.p.y);
     const z = this.safeZone();
-    if (z) this.say('進入安全區!怪物無法進來,但力量只剩 ' + Math.ceil(z.energy / 1000) + ' 秒。', now);
+    if (z) this.say('進入安全區!怪物無法進來,力量剩 ' + Math.ceil(z.energy / 1000) + ' 秒。', now);
     this.checkHits(now);
+  },
+
+  pickup(t, now) {
+    const g = this.g, it = ITEMS[t];
+    if (t === 'hourglass') { g.bonus += 60000; this.say('撿到沙漏!時間 +1 分鐘', now); }
+    else if (t === 'heart') { g.lives++; this.say('撿到生命之心!增加 1 條命', now); }
+    else { g.inv[t]++; this.say('撿到「' + it.name + '」!按 ' + (USABLE.indexOf(t) + 1) + ' 或點下方按鈕使用', now); }
+  },
+
+  useItem(t) {
+    const g = this.g;
+    if (!g || g.over || !g.inv[t]) return;
+    const now = Date.now();
+    if (t === 'lamp') {
+      g.lampUntil = Math.max(now, g.lampUntil) + 20000;
+      this.say('點燃燈油,視野 +3 格!', now);
+    } else if (t === 'shield') {
+      g.invUntil = Math.max(now, g.invUntil) + 5000;
+      g.stuckUntil = 0;
+      this.say('護盾展開,無敵 5 秒!', now);
+    } else if (t === 'stun') {
+      let best = null, bd = 1e9;
+      for (const m of g.mons) {
+        if (m.hidden) continue;
+        const dd = Math.abs(m.x - g.p.x) + Math.abs(m.y - g.p.y);
+        if (dd < bd) { bd = dd; best = m; }
+      }
+      if (!best) { this.say('附近沒有怪物可以暈眩', now); return; }
+      best.stunUntil = now + 10000;
+      this.say('「' + best.name + '」被暈眩 10 秒!', now);
+    } else if (t === 'scroll') {
+      const spot = this.spotNearSafe();
+      if (!spot) { this.say('找不到可以傳送的安全區', now); return; }
+      g.p = spot;
+      g.stuckUntil = 0;
+      g.nextMove = now + 150;
+      this.say('傳送到安全區旁!', now);
+      g.inv[t]--;
+      this.enterCell(now);
+      return;
+    }
+    g.inv[t]--;
+  },
+
+  spotNearSafe() {
+    const g = this.g;
+    let zs = g.safes.filter(z => z.active);
+    if (!zs.length) zs = g.safes.slice();
+    for (let i = zs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = zs[i]; zs[i] = zs[j]; zs[j] = t; }
+    for (const z of zs) {
+      if (z.x === g.p.x && z.y === g.p.y) continue;
+      const opts = [];
+      for (const [dx, dy] of DIRS) {
+        const nx = z.x + dx, ny = z.y + dy;
+        if (g.grid[ny * g.W + nx] !== 0) continue;
+        if (g.mons.some(m => !m.hidden && Math.abs(m.x - nx) + Math.abs(m.y - ny) <= 1)) continue;
+        opts.push({ x: nx, y: ny });
+      }
+      if (opts.length) return opts[Math.floor(Math.random() * opts.length)];
+    }
+    return null;
   },
 
   checkHits(now) {
@@ -566,17 +740,27 @@ const Game = {
     if (g.over || this.safeZone()) return;
     for (const m of g.mons) {
       if (m.hidden || m.x !== g.p.x || m.y !== g.p.y) continue;
+      if (now < m.stunUntil) continue;
       if (m.type === 'thief') {
-        if (g.hasKey && !(m.until && now < m.until)) {
+        if (g.hasKey && now >= g.invUntil && !(m.until && now < m.until)) {
           g.hasKey = false;
           g.key = this.randFloor(10) || this.randFloor(0);
           m.until = now + 3000;
           this.say('竊鑰賊搶走了鑰匙,藏到別處去了!', now);
         }
-      } else {
-        this.end(false, '你被「' + m.name + '」抓到了!');
-        return;
+        continue;
       }
+      if (now < g.invUntil) continue;
+      if (g.lives > 0) {
+        g.lives--;
+        g.invUntil = now + 3000;
+        g.stuckUntil = 0;
+        m.stunUntil = now + 3000;
+        this.say('被「' + m.name + '」抓到,失去 1 條命!3 秒內無敵', now);
+        continue;
+      }
+      this.end(false, '你被「' + m.name + '」抓到了!');
+      return;
     }
   },
 
@@ -666,6 +850,7 @@ const Game = {
   // ---- 每種怪物的 AI,回傳下次行動的間隔(毫秒) ----
   act(m, now) {
     const g = this.g, p = g.p;
+    if (now < m.stunUntil) return 200;
     const d = this.dP(m);
     const near = (r) => d >= 0 && d <= r;
     const el = now - g.t0;
@@ -826,6 +1011,51 @@ const Game = {
         this.chase(m);
         return 330;
       }
+      case 'mirror': {
+        if (near(4)) { this.chase(m); return 420; }
+        const t = this.nearestFloor(g.W - 1 - p.x, p.y);
+        if (!this.toward(m, t.x, t.y)) this.wander(m);
+        return 420;
+      }
+      case 'trapper': {
+        if (!m.nt) m.nt = now + 7000;
+        if (now >= m.nt) {
+          const i = m.y * g.W + m.x;
+          if (g.grid[i] === 0 && !g.traps.has(i) && !g.items.has(i) && !(g.key.x === m.x && g.key.y === m.y) && g.trapperCount < 10) {
+            g.traps.add(i); g.trapperCount++;
+          }
+          m.nt = now + 7000;
+        }
+        this.chase(m);
+        return 560;
+      }
+      case 'swarm':
+        if (Math.random() < 0.5) this.chase(m); else this.wander(m);
+        return 260;
+      case 'devour': {
+        if (near(4)) { this.chase(m); return 480; }
+        let best = null, bd = 1e9;
+        for (const z of g.safes) {
+          if (!z.active) continue;
+          const v = this.distFrom(z)[m.y * g.W + m.x];
+          if (v >= 0 && v < bd) { bd = v; best = z; }
+        }
+        if (!best) { this.chase(m); return 480; }
+        if (bd <= 1) {
+          best.active = false; best.energy = 0;
+          this.rebuildMG();
+          this.say('噬光者吞噬了一個安全區!', now);
+          return 900;
+        }
+        this.stepDown(m, this.distFrom(best));
+        return 480;
+      }
+      case 'abyss': {
+        if (!m.nd) m.nd = g.t0 + 20000;
+        if (now >= m.nd) { g.darkUntil = now + 6000; m.nd = now + 20000; this.say('深淵之王讓黑暗降臨,視野縮成 1 格!', now); }
+        this.chase(m);
+        return 320;
+      }
     }
     return 500;
   }
@@ -835,8 +1065,10 @@ const Game = {
 const $ = (id) => document.getElementById(id);
 const cv = $('cv');
 const ctx = cv.getContext('2d');
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+cv.width = cv.height = Math.round(540 * DPR);
 
-function roundRect(x, y, w, h, r) {
+function rrect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
   ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
@@ -858,63 +1090,141 @@ function drawDoor(cx, cy, color) {
   ctx.beginPath(); ctx.moveTo(2, 21.5); ctx.lineTo(22, 21.5); ctx.stroke();
   ctx.restore();
 }
-
-function drawSafe(cx, cy, z, now, lit) {
+function shieldPath(cx, cy, s) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 15 * s);
+  ctx.lineTo(cx + 13 * s, cy - 9 * s);
+  ctx.lineTo(cx + 13 * s, cy + 1 * s);
+  ctx.quadraticCurveTo(cx + 13 * s, cy + 11 * s, cx, cy + 17 * s);
+  ctx.quadraticCurveTo(cx - 13 * s, cy + 11 * s, cx - 13 * s, cy + 1 * s);
+  ctx.lineTo(cx - 13 * s, cy - 9 * s);
+  ctx.closePath();
+}
+// 安全區:整格方形 + 盾牌 + 能量條(與圓形紅圈的怪物明顯不同)
+function drawSafe(px, py, z, now, lit) {
+  const cx = px + 30, cy = py + 30;
   ctx.save();
   if (!z.active) {
-    ctx.strokeStyle = 'rgba(160,170,180,0.35)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(160,170,180,0.4)'; ctx.lineWidth = 2;
+    rrect(px + 5, py + 5, 50, 50, 8); ctx.stroke();
     ctx.restore();
     return;
   }
-  const k = 0.35 + 0.65 * (z.energy / SAFE_TIME);
+  const k = z.energy / SAFE_TIME;
   const pulse = 0.85 + 0.15 * Math.sin(now / 300);
-  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 30);
-  grd.addColorStop(0, 'rgba(127,214,255,' + (0.55 * k * pulse) + ')');
-  grd.addColorStop(1, 'rgba(127,214,255,0)');
-  ctx.globalAlpha = lit ? 1 : 0.8;
-  if (lit) { ctx.fillStyle = 'rgba(127,214,255,' + (0.16 * k) + ')'; ctx.fillRect(cx - 30, cy - 30, 60, 60); }
-  ctx.fillStyle = grd; ctx.fillRect(cx - 30, cy - 30, 60, 60);
-  ctx.strokeStyle = 'rgba(159,227,255,' + (0.9 * k) + ')'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI * 2); ctx.stroke();
-  // 能量弧
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(cx, cy, 25, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (z.energy / SAFE_TIME)); ctx.stroke();
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(cx, cy - 11); ctx.lineTo(cx + 11, cy); ctx.lineTo(cx, cy + 11); ctx.lineTo(cx - 11, cy); ctx.closePath(); ctx.stroke();
+  ctx.globalAlpha = lit ? 1 : 0.75 * pulse;
+  ctx.fillStyle = 'rgba(95,208,255,' + (0.14 + 0.16 * k) + ')';
+  rrect(px + 3, py + 3, 54, 54, 9); ctx.fill();
+  ctx.shadowColor = '#5fd0ff'; ctx.shadowBlur = 14 * pulse;
+  ctx.strokeStyle = '#5fd0ff'; ctx.lineWidth = 3;
+  rrect(px + 3, py + 3, 54, 54, 9); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 2.6; ctx.lineJoin = 'round';
+  shieldPath(cx, cy - 3, 0.95); ctx.stroke();
+  // 能量條
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px + 10, py + 49, 40, 4);
+  ctx.fillStyle = '#9fe3ff'; ctx.fillRect(px + 10, py + 49, 40 * k, 4);
+  ctx.restore();
+}
+function drawItem(cx, cy, t, now) {
+  const it = ITEMS[t];
+  const bob = Math.sin(now / 350 + cx) * 2;
+  ctx.save();
+  ctx.translate(cx, cy + bob);
+  ctx.beginPath();
+  for (let k = 0; k < 6; k++) {
+    const a = -Math.PI / 2 + k * Math.PI / 3;
+    const x = Math.cos(a) * 19, y = Math.sin(a) * 19;
+    if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+  ctx.shadowColor = it.color; ctx.shadowBlur = 12;
+  ctx.fillStyle = it.color; ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = '#17130a'; ctx.font = '900 17px "Noto Serif TC", serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(it.glyph, 0, 1);
+  ctx.restore();
+}
+function drawTrap(cx, cy) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath(); ctx.arc(cx, cy, 19, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#8a8378'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.strokeStyle = '#d6cbbb'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let k = 0; k <= 6; k++) { const x = cx - 15 + k * 5; const y = cy - 3 - (k % 2 ? 6 : 0); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  ctx.stroke();
+  ctx.beginPath();
+  for (let k = 0; k <= 6; k++) { const x = cx - 15 + k * 5; const y = cy + 3 + (k % 2 ? 6 : 0); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  ctx.stroke();
+  ctx.restore();
+}
+function drawMonster(cx, cy, m, now) {
+  const stunned = now < m.stunUntil;
+  ctx.save();
+  if (m.type === 'garg' && m.frozen) ctx.globalAlpha *= 0.8;
+  if (stunned) ctx.globalAlpha *= 0.55;
+  ctx.fillStyle = m.color;
+  ctx.beginPath(); ctx.arc(cx, cy, 19, 0, Math.PI * 2); ctx.fill();
+  // 紅色危險圈
+  const pulse = 0.7 + 0.3 * Math.sin(now / 180);
+  ctx.shadowColor = '#ff2a2a'; ctx.shadowBlur = stunned ? 0 : 12 * pulse;
+  ctx.strokeStyle = stunned ? '#ffd35c' : '#ff4d4d'; ctx.lineWidth = 4;
+  if (stunned) ctx.setLineDash([6, 5]);
+  ctx.beginPath(); ctx.arc(cx, cy, 23, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]); ctx.shadowBlur = 0;
+  ctx.fillStyle = m.ink; ctx.font = '900 20px "Noto Serif TC", serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(m.glyph, cx, cy + 1);
+  if (stunned) {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffd35c'; ctx.font = '700 13px "Noto Sans TC", sans-serif';
+    ctx.fillText('暈', cx + 20, cy - 20);
+  }
   ctx.restore();
 }
 
+let fxCache = '';
 function draw() {
   const g = Game.g;
   if (!g) return;
   const now = Date.now();
   const T = g.theme;
-  let vis = 2;
-  for (const m of g.mons) if (m.type === 'mist' && Math.max(Math.abs(m.x - g.p.x), Math.abs(m.y - g.p.y)) <= 4) vis = 1;
+  let fog = now < g.darkUntil;
+  for (const m of g.mons) if (m.type === 'mist' && now >= m.stunUntil && Math.max(Math.abs(m.x - g.p.x), Math.abs(m.y - g.p.y)) <= 4) fog = true;
+  const lamp = now < g.lampUntil;
+  const vis = (fog ? 1 : BASE_VIS) + (lamp ? 3 : 0);
+  const R = lamp ? 5 : 4;
+  const S = cv.width / ((2 * R + 1) * 60);
   const monAt = new Map();
   for (const m of g.mons) {
     if (m.hidden) continue;
     const ch = Math.max(Math.abs(m.x - g.p.x), Math.abs(m.y - g.p.y));
-    if (m.type === 'shade' && !(ch <= 1 || (now % 2400) < 300)) continue;
+    if (m.type === 'shade' && !lamp && !(ch <= 1 || (now % 2400) < 300)) continue;
     const k = m.y * g.W + m.x;
     if (!monAt.has(k)) monAt.set(k, m);
   }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#07080b';
   ctx.fillRect(0, 0, cv.width, cv.height);
-  for (let vy = -VIEW_R; vy <= VIEW_R; vy++) for (let vx = -VIEW_R; vx <= VIEW_R; vx++) {
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  const TILE = 60;
+  for (let vy = -R; vy <= R; vy++) for (let vx = -R; vx <= R; vx++) {
     const x = g.p.x + vx, y = g.p.y + vy;
     const ch = Math.max(Math.abs(vx), Math.abs(vy));
     if (x < 0 || y < 0 || x >= g.W || y >= g.H) continue;
-    const zone = g.safeAt.get(y * g.W + x);
-    if (ch > vis) {
-      // 安全區會發光,燈光範圍外也看得見
-      if (zone && zone.active) drawSafe((vx + VIEW_R) * TILE + TILE / 2, (vy + VIEW_R) * TILE + TILE / 2, zone, now, false);
-      continue;
-    }
-    const px = (vx + VIEW_R) * TILE, py = (vy + VIEW_R) * TILE;
+    const px = (vx + R) * TILE, py = (vy + R) * TILE;
     const cx = px + TILE / 2, cy = py + TILE / 2;
     const i = y * g.W + x, val = g.grid[i];
+    const zone = g.safeAt.get(i);
+    if (ch > vis) {
+      // 安全區會發光,燈光範圍外也看得見
+      if (zone && zone.active) drawSafe(px, py, zone, now, false);
+      continue;
+    }
     ctx.globalAlpha = ch < vis ? 1 : 0.6;
     if (val === 1 || val === 2) {
       ctx.fillStyle = T[6]; ctx.fillRect(px, py, TILE, TILE);
@@ -937,46 +1247,56 @@ function draw() {
         ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.stroke();
         ctx.beginPath(); ctx.arc(cx, cy, 21, 0, Math.PI * 2); ctx.stroke();
       }
+      if (zone) drawSafe(px, py, zone, now, true);
+      if (g.traps.has(i)) drawTrap(cx, cy);
+      const it = g.items.get(i);
+      if (it) drawItem(cx, cy, it, now);
       if (!g.hasKey && g.key.x === x && g.key.y === y) drawKey(cx, cy, 38 / 24, '#f2b544');
     }
-    if (zone) drawSafe(cx, cy, zone, now, true);
     const m = monAt.get(i);
-    if (m) {
-      ctx.globalAlpha *= (m.type === 'garg' && m.frozen) ? 0.75 : 1;
-      ctx.shadowColor = m.color; ctx.shadowBlur = 16;
-      ctx.fillStyle = m.color; ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 3; ctx.stroke();
-      ctx.fillStyle = m.ink; ctx.font = '900 22px "Noto Serif TC", serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(m.glyph, cx, cy + 1);
-    }
+    if (m) drawMonster(cx, cy, m, now);
     ctx.globalAlpha = 1;
   }
   // 玩家
-  const pcx = VIEW_R * TILE + TILE / 2, pcy = pcx;
+  const pcx = R * TILE + TILE / 2, pcy = pcx;
+  const inv = now < g.invUntil, stuck = now < g.stuckUntil;
   ctx.shadowColor = 'rgba(242,181,68,0.75)'; ctx.shadowBlur = 22;
   ctx.fillStyle = '#f7d38a'; ctx.beginPath(); ctx.arc(pcx, pcy, 17, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 0;
   ctx.strokeStyle = 'rgba(242,181,68,0.35)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pcx, pcy, 19, 0, Math.PI * 2); ctx.stroke();
-  // 面向指示
+  if (inv) {
+    ctx.strokeStyle = 'rgba(127,240,200,' + (0.6 + 0.4 * Math.sin(now / 120)) + ')'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(pcx, pcy, 25, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (stuck) drawTrap(pcx, pcy + 16);
   ctx.fillStyle = '#5a3a00';
   ctx.beginPath(); ctx.arc(pcx + g.facing[0] * 9, pcy + g.facing[1] * 9, 3, 0, Math.PI * 2); ctx.fill();
   if (g.hasKey) drawKey(pcx, pcy + 1, 0.7, '#5a3a00');
   // 燈光
-  const grd = ctx.createRadialGradient(pcx, pcy, 0, pcx, pcy, 170);
+  const lr = 60 * (vis + 0.8);
+  const grd = ctx.createRadialGradient(pcx, pcy, 0, pcx, pcy, lr);
   grd.addColorStop(0, 'rgba(255,196,110,0.14)'); grd.addColorStop(0.65, 'rgba(255,196,110,0.05)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = grd; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, (2 * R + 1) * TILE, (2 * R + 1) * TILE);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  // 狀態標籤
+  const fx = [];
+  if (lamp) fx.push('<span style="color:#ffd35c">視野 +3 · ' + Math.ceil((g.lampUntil - now) / 1000) + ' 秒</span>');
+  if (inv) fx.push('<span style="color:#7ff0c8">無敵 · ' + Math.ceil((g.invUntil - now) / 1000) + ' 秒</span>');
+  if (stuck) fx.push('<span style="color:#e5c38e">被陷阱困住 · ' + Math.ceil((g.stuckUntil - now) / 1000) + ' 秒</span>');
+  if (now < g.darkUntil) fx.push('<span style="color:#d9a8ff">黑暗降臨</span>');
+  else if (fog) fx.push('<span style="color:#bfe3ee">迷霧籠罩</span>');
+  fx.push('<span class="lives">額外生命 × ' + g.lives + '</span>');
+  const fxs = fx.join('');
+  if (fxs !== fxCache) { $('fx').innerHTML = fxs; fxCache = fxs; }
 
   // HUD
-  $('fogtag').style.display = vis === 1 ? 'block' : 'none';
-  const endT = g.over ? g.endAt : now;
-  const left = Math.max(0, TIME_LIMIT - (endT - g.t0));
+  const left = Game.timeLeft(now);
   const danger = left < 60000;
   const tc = danger ? '#ff6b5e' : '#f2b544';
   $('timeText').textContent = fmt(left / 1000);
   $('timeText').style.color = tc;
-  $('timeBar').style.width = (left / TIME_LIMIT * 100) + '%';
+  $('timeBar').style.width = Math.min(100, left / (TIME_LIMIT + g.bonus) * 100) + '%';
   $('timeBar').style.background = tc;
   $('board').classList.toggle('danger', danger);
   $('objective').textContent = g.hasKey ? '前往出口大門' : '尋找鑰匙';
@@ -988,6 +1308,7 @@ function draw() {
   $('msg').classList.toggle('safe', !!sz);
   if (sz) $('msg').textContent = '安全區內:怪物無法靠近,也追丟了你的蹤跡(剩 ' + Math.ceil(sz.energy / 1000) + ' 秒)';
   const act = g.safes.filter(z => z.active).length;
+  $('safeTag').textContent = '安全區 ' + act + ' / ' + g.safes.length;
   $('mTime').textContent = fmt(left / 1000);
   $('mTime').style.color = tc;
   $('mKey').classList.toggle('have', g.hasKey);
@@ -995,7 +1316,11 @@ function draw() {
   $('mMsg').textContent = sz ? '安全區內,剩 ' + Math.ceil(sz.energy / 1000) + ' 秒' : (hot ? g.msg : (g.hasKey ? '鑰匙到手!找外牆上的大門' : '在迷宮上滑動或按方向鍵移動'));
   $('mMsg').classList.toggle('hot', hot && !sz);
   $('mMsg').classList.toggle('safe', !!sz);
-  $('safeTag').textContent = '安全區 ' + act + ' / ' + g.safes.length;
+  for (const t of USABLE) {
+    const b = $('ib-' + t);
+    b.querySelector('.ct').textContent = '× ' + g.inv[t];
+    b.disabled = !g.inv[t] || g.over;
+  }
   const cp = $('compass');
   if (Game.compass) {
     const tgt = g.hasKey ? g.door : g.key;
@@ -1008,19 +1333,23 @@ const UI = {
   renderMenu() {
     const box = $('tiers');
     box.innerHTML = '';
-    for (let t = 0; t < 4; t++) {
+    for (let t = 0; t < LEVELS / 5; t++) {
+      const n0 = t * 5 + 1;
+      const extras = [(t + 1) + ' 隻怪物同時追捕'];
+      if (n0 >= ITEM_FROM) extras.push('道具 ' + (2 * (t + 1)) + ' 個');
+      if (n0 >= TRAP_FROM) extras.push('陷阱');
       const tier = document.createElement('div');
       tier.className = 'tier';
-      tier.innerHTML = '<div class="tier-h"><b>第 ' + (t * 5 + 1) + '–' + (t * 5 + 5) + ' 關</b><span>' + (t + 1) + ' 隻怪物同時追捕</span></div>';
+      tier.innerHTML = '<div class="tier-h"><b>第 ' + n0 + '–' + (n0 + 4) + ' 關</b><span>' + extras.join(' · ') + '</span></div>';
       const grid = document.createElement('div');
       grid.className = 'grid5';
-      for (let k = 1; k <= 5; k++) {
-        const n = t * 5 + k, th = THEMES[n - 1], sz = sizeOf(n), best = Game.cleared[n];
+      for (let k = 0; k < 5; k++) {
+        const n = n0 + k, th = THEMES[n - 1], sz = sizeOf(n), best = Game.cleared[n];
         const b = document.createElement('button');
         b.className = 'card';
         b.innerHTML =
           '<div style="display:flex;align-items:baseline;gap:10px"><span class="n">' + pad2(n) + '</span><span class="t">' + th[0] + '</span></div>' +
-          '<span class="s">' + sz.W + ' × ' + sz.H + ' 格</span>' +
+          '<span class="s">' + sz.W + ' × ' + sz.H + ' 格' + (MONS[n - 1] ? ' · 新怪物「' + MONS[n - 1].name + '」' : '') + '</span>' +
           '<span class="m">怪物:' + lineup(n).map(i => MONS[i].name).join('、') + '</span>' +
           (best != null ? '<span class="done">通關 ' + fmt(best) + '</span>' : '');
         b.addEventListener('click', () => Game.start(n));
@@ -1029,7 +1358,7 @@ const UI = {
       tier.appendChild(grid);
       box.appendChild(tier);
     }
-    $('clearedChip').textContent = '已通關 ' + Object.keys(Game.cleared).length + ' / 20';
+    $('clearedChip').textContent = '已通關 ' + Object.keys(Game.cleared).length + ' / ' + LEVELS;
   },
   showMenu() {
     Game.g = null; Game.held = [];
@@ -1050,34 +1379,48 @@ const UI = {
     wakeLock();
     $('tags').innerHTML = '<span class="tag">' + g.W + ' × ' + g.H + ' 格</span><span class="tag">' + ALGO[T[1]] + '</span>' +
       (T[4] > 0 ? '<span class="tag mud">' + T[7] + ':移動減速</span>' : '') +
+      (g.traps.size ? '<span class="tag trap">陷阱 ' + g.traps.size + ' 個</span>' : '') +
       '<span class="tag safe" id="safeTag"></span>';
-    $('monCount').textContent = g.mons.length + ' 隻 · AI 各不相同';
+    $('monCount').textContent = g.mons.length + ' 隻 · 道具 ' + g.items.size + ' 個';
     $('roster').innerHTML = lineup(g.n).map(i => {
-      const m = MONS[i];
+      const m = MONS[i], c = ITEMS[m.counter];
       return '<div class="mon"><div class="glyph" style="background:' + m.color + ';color:' + m.ink + '">' + m.glyph + '</div>' +
-        '<div style="min-width:0"><div><span class="nm">' + m.name + '</span><span class="ai">' + m.ai + '</span></div>' +
+        '<div style="min-width:0"><div class="top"><span class="nm">' + m.name + '</span><span class="ai">' + m.ai + '</span>' +
+        '<span class="counter">剋星 ' + hexHTML(m.counter) + c.name + '</span></div>' +
         '<div class="ds">' + m.desc + '</div></div></div>';
     }).join('');
+    fxCache = '';
     window.scrollTo(0, 0);
   },
   showResult(win, reason, used, n) {
     $('rTag').textContent = win ? 'ESCAPED' : 'CAUGHT';
     $('rTag').style.color = win ? '#8fe8a8' : '#ff6b5e';
-    $('rTitle').textContent = win ? (n === 20 ? '全部通關!' : '成功逃脫!') : '逃脫失敗';
+    $('rTitle').textContent = win ? (n === LEVELS ? '全部通關!' : '成功逃脫!') : '逃脫失敗';
     $('rReason').textContent = reason;
     $('rTime').textContent = '用時 ' + fmt(used);
     $('resultBox').style.borderColor = win ? '#2f5a3c' : '#6a2a24';
-    $('rNext').classList.toggle('hidden', !(win && n < 20));
+    $('rNext').classList.toggle('hidden', !(win && n < LEVELS));
     $('overlay').classList.add('show');
-    setTimeout(() => (win && n < 20 ? $('rNext') : $('rRetry')).focus(), 30);
+    setTimeout(() => (win && n < LEVELS ? $('rNext') : $('rRetry')).focus(), 30);
   }
 };
+
+// 背包按鈕與道具說明
+$('inv').innerHTML = USABLE.map((t, k) => {
+  const it = ITEMS[t];
+  return '<button class="ibtn" id="ib-' + t + '" title="' + it.desc + '" aria-label="使用' + it.name + ':' + it.desc + '">' +
+    hexHTML(t) + '<span class="nm">' + it.name + '</span><span class="ct">× 0</span><kbd>' + (k + 1) + '</kbd></button>';
+}).join('');
+USABLE.forEach(t => $('ib-' + t).addEventListener('click', () => Game.useItem(t)));
+$('itemLegend').innerHTML = ITEM_KEYS.map(t => '<span class="lg">' + hexHTML(t) + '<span>' + ITEMS[t].name + ' <small>' + ITEMS[t].desc + '</small></span></span>').join('');
 
 // ---------------- 輸入 ----------------
 document.addEventListener('keydown', (e) => {
   if (!Game.g) return;
   if (e.key === 'Escape') { UI.showMenu(); return; }
   if (Game.g.over) return;
+  const slot = '1234'.indexOf(e.key);
+  if (slot >= 0) { Game.useItem(USABLE[slot]); return; }
   const d = KEYMAP[e.key];
   if (!d) return;
   e.preventDefault();
@@ -1106,6 +1449,9 @@ document.querySelectorAll('.dpad button').forEach(b => {
 $('btnRestart').addEventListener('click', () => { if (Game.g) Game.start(Game.g.n); });
 $('btnMenu').addEventListener('click', () => UI.showMenu());
 $('mMenu').addEventListener('click', () => UI.showMenu());
+$('rRetry').addEventListener('click', () => { if (Game.g) Game.start(Game.g.n); });
+$('rNext').addEventListener('click', () => { if (Game.g && Game.g.n < LEVELS) Game.start(Game.g.n + 1); });
+$('rMenu').addEventListener('click', () => UI.showMenu());
 
 // 在迷宮上滑動:手指往哪個方向拉,就持續往那邊走,放開停止
 let swipe = null;
@@ -1142,9 +1488,6 @@ function wakeLock() {
   } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Game.g) wakeLock(); });
-$('rRetry').addEventListener('click', () => { if (Game.g) Game.start(Game.g.n); });
-$('rNext').addEventListener('click', () => { if (Game.g && Game.g.n < 20) Game.start(Game.g.n + 1); });
-$('rMenu').addEventListener('click', () => UI.showMenu());
 
 try { Game.compass = localStorage.getItem('maze-escape-compass') === '1'; } catch (e) {}
 $('compassToggle').checked = Game.compass;
