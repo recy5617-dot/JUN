@@ -70,6 +70,9 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
 #compass{flex-shrink:0;color:var(--amber);display:none}
 .msg{padding:12px 16px;border-radius:10px;background:var(--panel);color:var(--muted);font-size:15px;font-weight:500;min-height:46px}
 .msg.hot{background:#2a2210;color:#f5d58a}
+.msg.safe{background:#0f2630;color:#9fe3ff}
+.tag.safe{background:#10262f;color:#9fe3ff}
+.chip.safe{border-color:#1f4a5a;background:#0f2028;color:#9fe3ff}
 .roster-h{display:flex;justify-content:space-between;align-items:baseline}
 .roster-h b{font-family:var(--serif);font-weight:600;font-size:18px}
 .roster-h span{font-size:13px;color:var(--muted)}
@@ -118,6 +121,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
       <span class="chip">視野只有 2 格</span>
       <span class="chip">鑰匙 → 大門</span>
       <span class="chip">每 5 關怪物 +1</span>
+      <span class="chip safe">安全區可躲避</span>
       <label class="chip"><input type="checkbox" id="compassToggle"> 顯示羅盤(簡單模式)</label>
       <span class="chip gold" id="clearedChip">已通關 0 / 20</span>
     </div>
@@ -145,6 +149,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:36px;line-height:
           <span>用 <b>方向鍵 / WASD</b> 移動,按住可連續前進。</span>
           <span>觸控裝置請按住左側方向鍵。按 <b>Esc</b> 返回選單。</span>
           <span>泥沼、蛛網會讓你變慢;怪物只在燈光範圍內可見。</span>
+          <span>藍色<b style="color:#9fe3ff">安全區</b>在黑暗中也看得到:怪物進不來,但每個只能躲 12 秒。</span>
         </div>
       </div>
     </div>
@@ -260,6 +265,8 @@ function lineup(n) {
   for (let i = 0; i < c; i++) out.push(n - 1 - i);
   return out;
 }
+const SAFE_TIME = 12000;
+function safeCount(n) { return 2 + Math.ceil(n / 3); }
 function sizeOf(n) { return { W: 13 + 2 * (n - 1), H: 11 + 2 * (n - 1) }; }
 function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 function fmt(sec) { const s = Math.max(0, Math.ceil(sec)); return Math.floor(s / 60) + ':' + pad2(s % 60); }
@@ -381,7 +388,25 @@ function buildLevel(n) {
     const ci = cand.splice(j, 1)[0];
     return { m: mi, x: ci % W, y: Math.floor(ci / W) };
   });
-  return { W, H, grid: g, mud, key, door, doorIn, spawns, theme: T };
+  // 安全區:盡量分散在迷宮各處(最遠點取樣)
+  const taken = new Set(spawns.map(s => I(s.x, s.y)));
+  taken.add(ki); taken.add(I(doorIn.x, doorIn.y));
+  const pool = floors.filter(i => ds[i] >= 5 && !taken.has(i));
+  const safes = [];
+  const nz = safeCount(n);
+  while (safes.length < nz && pool.length) {
+    let bi = -1, bs = -1;
+    for (let t = 0; t < pool.length; t++) {
+      const x = pool[t] % W, y = Math.floor(pool[t] / W);
+      let md = Math.abs(x - 1) + Math.abs(y - 1);
+      for (const s of safes) md = Math.min(md, Math.abs(s.x - x) + Math.abs(s.y - y));
+      const sc = md + r() * 3;
+      if (sc > bs) { bs = sc; bi = t; }
+    }
+    const i = pool.splice(bi, 1)[0];
+    safes.push({ x: i % W, y: Math.floor(i / W) });
+  }
+  return { W, H, grid: g, mud, key, door, doorIn, spawns, safes, theme: T };
 }
 
 // ---------------- 遊戲核心 ----------------
@@ -403,13 +428,31 @@ const Game = {
       const M = MONS[s.m];
       return Object.assign({}, M, { type: M.id, x: s.x, y: s.y, px: s.x, py: s.y, next: now + 2500 + i * 400, hidden: M.id === 'echo' });
     });
-    g.distP = bfs(g.grid, g.W, g.H, 1, 1);
+    g.safes = L.safes.map(s => ({ x: s.x, y: s.y, energy: SAFE_TIME, active: true }));
+    g.safeAt = new Map(g.safes.map(z => [z.y * g.W + z.x, z]));
+    g.lastTick = now;
     this.g = g;
+    this.rebuildMG();
     this.held = [];
     UI.showPlay(g);
   },
 
   say(msg, now) { this.g.msg = msg; this.g.msgUntil = now + 3500; },
+
+  // 怪物用的地圖:仍有效的安全區視同牆壁
+  rebuildMG() {
+    const g = this.g;
+    g.mg = new Uint8Array(g.grid);
+    for (const z of g.safes) if (z.active) g.mg[z.y * g.W + z.x] = 1;
+    g.ver++;
+    g.cache.clear();
+    g.distP = bfs(g.mg, g.W, g.H, g.p.x, g.p.y);
+  },
+  safeZone() {
+    const g = this.g;
+    const z = g.safeAt.get(g.p.y * g.W + g.p.x);
+    return z && z.active ? z : null;
+  },
 
   end(win, reason) {
     const g = this.g;
@@ -430,6 +473,17 @@ const Game = {
     if (!g || g.over) return;
     const now = Date.now();
     if (now - g.t0 >= TIME_LIMIT) { this.end(false, '時間到!五分鐘內沒能逃出迷宮。'); return; }
+    const dt = now - g.lastTick;
+    g.lastTick = now;
+    const z = this.safeZone();
+    if (z) {
+      z.energy -= dt;
+      if (z.energy <= 0) {
+        z.energy = 0; z.active = false;
+        this.rebuildMG();
+        this.say('這個安全區的力量耗盡了!快離開!', now);
+      }
+    }
     const hk = this.held[this.held.length - 1];
     if (hk && now >= g.nextMove) this.tryMove(KEYMAP[hk], now);
     for (const m of g.mons) {
@@ -461,13 +515,15 @@ const Game = {
     g.lastMove = now;
     g.trail.push({ x: nx, y: ny, t: now });
     if (!g.hasKey && nx === g.key.x && ny === g.key.y) { g.hasKey = true; this.say('拿到鑰匙了!快找出口大門!', now); }
-    g.distP = bfs(g.grid, g.W, g.H, nx, ny);
+    g.distP = bfs(g.mg, g.W, g.H, nx, ny);
+    const z = this.safeZone();
+    if (z) this.say('進入安全區!怪物無法進來,但力量只剩 ' + Math.ceil(z.energy / 1000) + ' 秒。', now);
     this.checkHits(now);
   },
 
   checkHits(now) {
     const g = this.g;
-    if (g.over) return;
+    if (g.over || this.safeZone()) return;
     for (const m of g.mons) {
       if (m.hidden || m.x !== g.p.x || m.y !== g.p.y) continue;
       if (m.type === 'thief') {
@@ -496,7 +552,7 @@ const Game = {
       const nx = m.x + dx, ny = m.y + dy;
       if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H) continue;
       const ni = ny * g.W + nx;
-      if (g.grid[ni] !== 0) continue;
+      if (g.mg[ni] !== 0) continue;
       const dv = df[ni];
       if (dv >= 0 && dv < cur) opts.push([nx, ny]);
     }
@@ -510,7 +566,7 @@ const Game = {
     const g = this.g;
     const k = pt.x + ',' + pt.y + ',' + g.ver;
     let d = g.cache.get(k);
-    if (!d) { if (g.cache.size > 60) g.cache.clear(); d = bfs(g.grid, g.W, g.H, pt.x, pt.y); g.cache.set(k, d); }
+    if (!d) { if (g.cache.size > 60) g.cache.clear(); d = bfs(g.mg, g.W, g.H, pt.x, pt.y); g.cache.set(k, d); }
     return d;
   },
   toward(m, tx, ty) { return this.stepDown(m, this.distFrom({ x: tx, y: ty })); },
@@ -520,7 +576,7 @@ const Game = {
     for (const [dx, dy] of DIRS) {
       const nx = m.x + dx, ny = m.y + dy;
       if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H) continue;
-      if (g.grid[ny * g.W + nx] !== 0) continue;
+      if (g.mg[ny * g.W + nx] !== 0) continue;
       if (ok && !ok(nx, ny)) continue;
       opts.push([nx, ny]);
     }
@@ -533,7 +589,7 @@ const Game = {
   randFloor(minD) {
     const g = this.g;
     const c = [];
-    for (let i = 0; i < g.W * g.H; i++) if (g.grid[i] === 0 && g.distP[i] >= minD) c.push(i);
+    for (let i = 0; i < g.W * g.H; i++) if (g.mg[i] === 0 && g.distP[i] >= minD) c.push(i);
     if (!c.length) return null;
     const i = c[Math.floor(Math.random() * c.length)];
     return { x: i % g.W, y: Math.floor(i / g.W) };
@@ -541,7 +597,7 @@ const Game = {
   cellsAtDist(a, b) {
     const g = this.g;
     const c = [];
-    for (let i = 0; i < g.W * g.H; i++) if (g.grid[i] === 0 && g.distP[i] >= a && g.distP[i] <= b) c.push(i);
+    for (let i = 0; i < g.W * g.H; i++) if (g.mg[i] === 0 && g.distP[i] >= a && g.distP[i] <= b) c.push(i);
     if (!c.length) return null;
     const i = c[Math.floor(Math.random() * c.length)];
     return { x: i % g.W, y: Math.floor(i / g.W) };
@@ -562,7 +618,7 @@ const Game = {
     for (let r = 0; r < 7; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const nx = x + dx, ny = y + dy;
       if (nx < 1 || ny < 1 || nx > g.W - 2 || ny > g.H - 2) continue;
-      if (g.grid[ny * g.W + nx] === 0) return { x: nx, y: ny };
+      if (g.mg[ny * g.W + nx] === 0) return { x: nx, y: ny };
     }
     return { x: g.p.x, y: g.p.y };
   },
@@ -573,6 +629,13 @@ const Game = {
     const d = this.dP(m);
     const near = (r) => d >= 0 && d <= r;
     const el = now - g.t0;
+    // 玩家躲在安全區時,怪物失去目標,只會在附近徘徊
+    if (m.type !== 'echo' && this.safeZone()) {
+      if (m.type === 'berserk') m.st = 'roam';
+      if (m.type === 'phantom') return 900;
+      this.wander(m);
+      return 600;
+    }
     switch (m.type) {
       case 'wisp':
         if (near(5)) this.chase(m); else this.wander(m);
@@ -600,7 +663,7 @@ const Game = {
           m.ti = Math.min(j + 1, tr.length - 1);
           tg = tr[m.ti];
         }
-        this.toward(m, tg.x, tg.y);
+        if (!this.toward(m, tg.x, tg.y)) m.ti = Math.min(m.ti + 1, tr.length - 1);
         return 330;
       }
       case 'phantom': {
@@ -608,7 +671,8 @@ const Game = {
         let nx = m.x, ny = m.y;
         if (Math.abs(dx) >= Math.abs(dy) && dx !== 0) nx += Math.sign(dx); else if (dy !== 0) ny += Math.sign(dy);
         nx = Math.max(1, Math.min(g.W - 2, nx)); ny = Math.max(1, Math.min(g.H - 2, ny));
-        this.moveTo(m, nx, ny);
+        const sz = g.safeAt.get(ny * g.W + nx);
+        if (!(sz && sz.active)) this.moveTo(m, nx, ny);
         return 900;
       }
       case 'blink':
@@ -665,7 +729,7 @@ const Game = {
           let moved = false;
           for (const [dx, dy] of DIRS) {
             const nx = cx + dx, ny = cy + dy, ni = ny * g.W + nx;
-            if (g.grid[ni] === 0 && df[ni] >= 0 && df[ni] < df[cy * g.W + cx]) { cx = nx; cy = ny; moved = true; break; }
+            if (g.mg[ni] === 0 && df[ni] >= 0 && df[ni] < df[cy * g.W + cx]) { cx = nx; cy = ny; moved = true; break; }
           }
           if (!moved) break;
         }
@@ -710,8 +774,8 @@ const Game = {
             if (wx < 1 || wy < 1 || wx > g.W - 2 || wy > g.H - 2) continue;
             if (bx < 1 || by < 1 || bx > g.W - 2 || by > g.H - 2) continue;
             if (g.grid[wy * g.W + wx] === 1 && g.grid[by * g.W + bx] === 0) {
-              g.grid[wy * g.W + wx] = 0; g.ver++;
-              g.distP = bfs(g.grid, g.W, g.H, p.x, p.y);
+              g.grid[wy * g.W + wx] = 0; g.mg[wy * g.W + wx] = 0; g.ver++;
+              g.distP = bfs(g.mg, g.W, g.H, p.x, p.y);
               this.moveTo(m, wx, wy);
               this.say('牛頭魔王撞破了一面牆!', now);
               m.nb = now + 15000;
@@ -755,6 +819,32 @@ function drawDoor(cx, cy, color) {
   ctx.restore();
 }
 
+function drawSafe(cx, cy, z, now, lit) {
+  ctx.save();
+  if (!z.active) {
+    ctx.strokeStyle = 'rgba(160,170,180,0.35)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  const k = 0.35 + 0.65 * (z.energy / SAFE_TIME);
+  const pulse = 0.85 + 0.15 * Math.sin(now / 300);
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 30);
+  grd.addColorStop(0, 'rgba(127,214,255,' + (0.55 * k * pulse) + ')');
+  grd.addColorStop(1, 'rgba(127,214,255,0)');
+  ctx.globalAlpha = lit ? 1 : 0.8;
+  if (lit) { ctx.fillStyle = 'rgba(127,214,255,' + (0.16 * k) + ')'; ctx.fillRect(cx - 30, cy - 30, 60, 60); }
+  ctx.fillStyle = grd; ctx.fillRect(cx - 30, cy - 30, 60, 60);
+  ctx.strokeStyle = 'rgba(159,227,255,' + (0.9 * k) + ')'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI * 2); ctx.stroke();
+  // 能量弧
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy, 25, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (z.energy / SAFE_TIME)); ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy - 11); ctx.lineTo(cx + 11, cy); ctx.lineTo(cx, cy + 11); ctx.lineTo(cx - 11, cy); ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+
 function draw() {
   const g = Game.g;
   if (!g) return;
@@ -775,7 +865,13 @@ function draw() {
   for (let vy = -VIEW_R; vy <= VIEW_R; vy++) for (let vx = -VIEW_R; vx <= VIEW_R; vx++) {
     const x = g.p.x + vx, y = g.p.y + vy;
     const ch = Math.max(Math.abs(vx), Math.abs(vy));
-    if (x < 0 || y < 0 || x >= g.W || y >= g.H || ch > vis) continue;
+    if (x < 0 || y < 0 || x >= g.W || y >= g.H) continue;
+    const zone = g.safeAt.get(y * g.W + x);
+    if (ch > vis) {
+      // 安全區會發光,燈光範圍外也看得見
+      if (zone && zone.active) drawSafe((vx + VIEW_R) * TILE + TILE / 2, (vy + VIEW_R) * TILE + TILE / 2, zone, now, false);
+      continue;
+    }
     const px = (vx + VIEW_R) * TILE, py = (vy + VIEW_R) * TILE;
     const cx = px + TILE / 2, cy = py + TILE / 2;
     const i = y * g.W + x, val = g.grid[i];
@@ -803,6 +899,7 @@ function draw() {
       }
       if (!g.hasKey && g.key.x === x && g.key.y === y) drawKey(cx, cy, 38 / 24, '#f2b544');
     }
+    if (zone) drawSafe(cx, cy, zone, now, true);
     const m = monAt.get(i);
     if (m) {
       ctx.globalAlpha *= (m.type === 'garg' && m.frozen) ? 0.75 : 1;
@@ -844,9 +941,14 @@ function draw() {
   $('board').classList.toggle('danger', danger);
   $('objective').textContent = g.hasKey ? '前往出口大門' : '尋找鑰匙';
   $('keyIc').classList.toggle('have', g.hasKey);
+  const sz = Game.safeZone();
   const hot = now < g.msgUntil;
   $('msg').textContent = hot ? g.msg : (g.hasKey ? '鑰匙到手,大門在迷宮外牆上。' : '四處探索,鑰匙藏在迷宮深處。');
-  $('msg').classList.toggle('hot', hot);
+  $('msg').classList.toggle('hot', hot && !sz);
+  $('msg').classList.toggle('safe', !!sz);
+  if (sz) $('msg').textContent = '安全區內:怪物無法靠近,也追丟了你的蹤跡(剩 ' + Math.ceil(sz.energy / 1000) + ' 秒)';
+  const act = g.safes.filter(z => z.active).length;
+  $('safeTag').textContent = '安全區 ' + act + ' / ' + g.safes.length;
   const cp = $('compass');
   if (Game.compass) {
     const tgt = g.hasKey ? g.door : g.key;
@@ -897,7 +999,8 @@ const UI = {
     $('lvlNum').textContent = '第 ' + pad2(g.n) + ' 關';
     $('themeName').textContent = T[0];
     $('tags').innerHTML = '<span class="tag">' + g.W + ' × ' + g.H + ' 格</span><span class="tag">' + ALGO[T[1]] + '</span>' +
-      (T[4] > 0 ? '<span class="tag mud">' + T[7] + ':移動減速</span>' : '');
+      (T[4] > 0 ? '<span class="tag mud">' + T[7] + ':移動減速</span>' : '') +
+      '<span class="tag safe" id="safeTag"></span>';
     $('monCount').textContent = g.mons.length + ' 隻 · AI 各不相同';
     $('roster').innerHTML = lineup(g.n).map(i => {
       const m = MONS[i];
