@@ -266,8 +266,8 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
       <h3>玩家</h3>
       <div class="lb-status" id="lbStatus">正在連線排行榜…</div>
       <form class="authform hidden" id="authForm">
-        <label for="accInput" class="hidden">帳號</label>
-        <input id="accInput" maxlength="20" placeholder="帳號(英文、數字或底線,3–20 字)" autocomplete="username" autocapitalize="off" spellcheck="false">
+        <label for="accInput" class="hidden">帳號(電子郵件)</label>
+        <input id="accInput" type="email" inputmode="email" maxlength="120" placeholder="電子郵件(當作帳號,不會寄信給你)" autocomplete="email" autocapitalize="off" spellcheck="false">
         <label for="pwInput" class="hidden">密碼</label>
         <input id="pwInput" type="password" placeholder="密碼(至少 6 個字)" autocomplete="current-password">
         <div class="namerow">
@@ -2058,8 +2058,8 @@ const ClaudeOnline = {
 // ---------------- 自己的帳號系統(Supabase):放在一般網站或下載版時使用 ----------------
 const SUPA_URL = 'https://xwngwfyfztryryevfnfw.supabase.co';
 const SUPA_KEY = 'sb_publishable_W6oaFM5NuzQchsI2B77GRQ_heQvavl2'; // 公開金鑰,本來就放在網頁上
-const ACCOUNT_DOMAIN = 'players.maze-escape.app';                 // 帳號名稱轉成登入用的信箱格式(不會寄信)
-const ACCOUNT_RE = /^[A-Za-z0-9_]{3,20}$/;
+// Supabase 會檢查信箱網域是否真實存在,所以帳號直接使用玩家的電子郵件(已關閉驗證信,不會寄信)
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const SupaOnline = Object.assign({}, ClaudeOnline, {
   kind: 'supa', ready: false, avail: false, uid: null, account: '', session: null,
@@ -2154,10 +2154,10 @@ const SupaOnline = Object.assign({}, ClaudeOnline, {
 
   async auth(kind, account, password) {
     this.err = '';
-    account = String(account || '').trim();
-    if (!ACCOUNT_RE.test(account)) { this.err = '帳號只能用英文字母、數字或底線,3–20 個字。'; UI.renderBoard(); return false; }
+    account = String(account || '').trim().toLowerCase();
+    if (!EMAIL_RE.test(account)) { this.err = '請輸入電子郵件當作帳號,例如 name@gmail.com。'; UI.renderBoard(); return false; }
     if (String(password || '').length < 6) { this.err = '密碼至少要 6 個字。'; UI.renderBoard(); return false; }
-    const email = account.toLowerCase() + '@' + ACCOUNT_DOMAIN;
+    const email = account;
     try {
       const d = kind === 'up'
         ? await this.request('/auth/v1/signup', { method: 'POST', body: { email, password } }, false)
@@ -2169,14 +2169,26 @@ const SupaOnline = Object.assign({}, ClaudeOnline, {
       }
       this.useSession(this.fromAuth(d, account));
     } catch (e) {
-      const c = String(e.code || '') + ' ' + e.message;
-      if (/already|exists/i.test(c)) this.err = '這個帳號已經有人註冊了,請換一個,或直接登入。';
-      else if (/invalid_credentials|Invalid login/i.test(c)) this.err = '帳號或密碼不正確。';
-      else if (/weak_password|Password/i.test(c)) this.err = '密碼太簡單,請換一個更長的密碼。';
-      else if (/email_address_invalid|invalid format|email/i.test(c)) this.err = '伺服器不接受這個帳號格式,請換一個帳號名稱。';
-      else if (/signup_disabled|Signups not allowed/i.test(c)) this.err = '目前暫停註冊新帳號。';
+      const code = String(e.code || '');
+      const msg = String(e.message || '');
+      const known = {
+        user_already_exists: '這個信箱已經註冊過了,請直接按「登入」。',
+        email_exists: '這個信箱已經註冊過了,請直接按「登入」。',
+        invalid_credentials: '帳號或密碼不正確。',
+        weak_password: '密碼太簡單,請換一個更長、更複雜的密碼。',
+        email_address_invalid: '伺服器不接受這個信箱,請換一個真實存在的電子郵件。',
+        over_email_send_rate_limit: '註冊太頻繁被暫時擋下。通常是 Supabase 還開著「Confirm email」,關閉後再試。',
+        email_not_confirmed: '這個帳號還沒完成信箱驗證。請到 Supabase 關閉「Confirm email」後再登入。',
+        signup_disabled: 'Supabase 目前關閉了註冊新帳號,請到 Authentication 設定開啟「Allow new users to sign up」。',
+        email_provider_disabled: 'Supabase 關閉了電子郵件登入,請到 Authentication → Sign In / Providers → Email 開啟。'
+      };
+      if (known[code]) this.err = known[code];
+      else if (/already registered/i.test(msg)) this.err = known.user_already_exists;
+      else if (/Invalid login/i.test(msg)) this.err = known.invalid_credentials;
       else if (!e.status) this.err = '連不上排行榜伺服器,請檢查網路後再試。';
-      else this.err = '登入失敗:' + e.message;
+      else this.err = '登入失敗';
+      // 附上伺服器的原始訊息,方便排查
+      if (e.status) this.err += '(' + (code || e.status) + (msg ? ':' + msg : '') + ')';
       UI.renderBoard();
       return false;
     }
