@@ -23,6 +23,44 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 button:disabled{cursor:default;opacity:.45}
 .board,.board canvas{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .mhud,.mmsg{display:none}
+.mhud{align-items:center;gap:10px;width:min(540px,100%)}
+.mh-lvl{font-family:var(--serif);font-weight:900;font-size:22px;color:var(--amber)}
+.mh-name{font-weight:700;font-size:15px;flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mh-time{font-family:var(--serif);font-weight:900;font-size:24px;color:var(--amber);font-variant-numeric:tabular-nums}
+.mh-key{width:34px;height:34px;border-radius:50%;background:#262932;color:#6b6f7a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mh-key.have{background:#3a2d0c;color:var(--amber)}
+.mh-menu{height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:14px}
+.mmsg{width:min(540px,100%);padding:7px 12px;border-radius:8px;background:var(--panel);color:var(--muted);font-size:14px;min-height:34px}
+.mmsg.hot{background:#2a2210;color:#f5d58a}
+.mmsg.safe{background:#0d2632;color:#9fe3ff}
+.mh-fs{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.mh-fs .ic-exit,body.fs .mh-fs .ic-enter{display:none}
+body.fs .mh-fs .ic-exit{display:block}
+/* ---- 全螢幕模式 ---- */
+body.fs{overflow:hidden;overscroll-behavior:none}
+body.fs #play .play{position:fixed;inset:0;z-index:5;background:var(--bg);max-width:none;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-right,0px) + 12px) calc(env(safe-area-inset-bottom,0px) + 8px) calc(env(safe-area-inset-left,0px) + 12px)}
+body.fs .right{display:none}
+body.fs .left{--bw:min(calc(100vw - 24px),calc(100vh - 262px),760px);width:100%;height:100%;align-items:center;justify-content:center;gap:8px}
+@supports (height:100dvh){body.fs .left{--bw:min(calc(100vw - 24px),calc(100dvh - 262px),760px)}}
+body.fs .mhud{display:flex;width:var(--bw)}
+body.fs .mmsg{display:block;width:var(--bw)}
+body.fs .board{width:var(--bw);height:var(--bw);aspect-ratio:auto}
+body.fs .ctrl{width:var(--bw)}
+body.fs .dpad{grid-template-columns:repeat(3,58px)}
+body.fs .dpad button{height:58px;border-radius:10px}
+@media (orientation:landscape){
+  body.fs .left{display:grid;grid-template-columns:auto auto 170px;grid-template-rows:auto 1fr;grid-template-areas:"hud hud msg" "dpad board inv";align-content:center;justify-content:center;column-gap:20px;row-gap:8px;
+    --bw:min(calc(100vh - 90px),calc(100vw - 460px),900px)}
+  @supports (height:100dvh){body.fs .left{--bw:min(calc(100dvh - 90px),calc(100vw - 460px),900px)}}
+  body.fs .mhud{grid-area:hud;width:100%}
+  body.fs .mmsg{grid-area:msg;width:100%;align-self:center;font-size:13px;padding:6px 10px;line-height:1.35}
+  body.fs .board{grid-area:board}
+  body.fs .ctrl{display:contents}
+  body.fs .dpad{grid-area:dpad;align-self:center}
+  body.fs .inv{grid-area:inv;grid-template-columns:1fr;align-self:center}
+  body.fs .ibtn{height:50px}
+}
 .wrap{max-width:1280px;margin:0 auto;padding:32px 40px}
 .eyebrow{font-size:13px;letter-spacing:.3em;color:var(--amber);font-weight:700}
 h1{margin:0;font-family:var(--serif);font-weight:900;font-size:48px;line-height:1.1}
@@ -116,6 +154,8 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
 .result p{margin:0}
 .hidden{display:none!important}
 @media (max-width:1100px){
+  .mhud{display:flex}
+  .mmsg{display:block}
   .play{flex-direction:column;padding:12px 16px;gap:16px}
   .left{width:100%;align-items:center;gap:8px}
   .board{width:min(540px,100%);height:auto;aspect-ratio:1}
@@ -123,16 +163,6 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
   .wrap{padding:24px 16px}
   h1{font-size:36px}
   .legend{grid-template-columns:1fr}
-  .mhud{display:flex;align-items:center;gap:10px;width:min(540px,100%)}
-  .mh-lvl{font-family:var(--serif);font-weight:900;font-size:22px;color:var(--amber)}
-  .mh-name{font-weight:700;font-size:15px;flex-grow:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .mh-time{font-family:var(--serif);font-weight:900;font-size:24px;color:var(--amber);font-variant-numeric:tabular-nums}
-  .mh-key{width:34px;height:34px;border-radius:50%;background:#262932;color:#6b6f7a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .mh-key.have{background:#3a2d0c;color:var(--amber)}
-  .mh-menu{height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:14px}
-  .mmsg{display:block;width:min(540px,100%);padding:7px 12px;border-radius:8px;background:var(--panel);color:var(--muted);font-size:14px;min-height:34px}
-  .mmsg.hot{background:#2a2210;color:#f5d58a}
-  .mmsg.safe{background:#0d2632;color:#9fe3ff}
   .right .lvl,.right h2,.right .tags,.right .row,.right .msg{display:none}
   .ctrl{width:min(540px,100%)}
   .dpad{grid-template-columns:repeat(3,54px)}
@@ -167,6 +197,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
       <span class="chip">第 6 關起有道具</span>
       <span class="chip">第 11 關起有陷阱</span>
       <label class="chip"><input type="checkbox" id="compassToggle"> 顯示羅盤(簡單模式)</label>
+      <label class="chip"><input type="checkbox" id="fsToggle"> 開始時自動全螢幕</label>
       <span class="chip gold" id="clearedChip">已通關 0 / 25</span>
     </div>
   </div>
@@ -200,6 +231,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
         <span class="mh-time" id="mTime">5:00</span>
         <span class="mh-key" id="mKey" aria-label="鑰匙"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M18 12v3.5M21 12v2.5"/></svg></span>
         <span class="tag safe" id="mSafe"></span>
+        <button class="mh-fs" id="fsBtn" aria-label="切換全螢幕"><svg class="ic-enter" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg><svg class="ic-exit" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button>
         <button class="mh-menu" id="mMenu">選單</button>
       </div>
       <div class="mmsg" id="mMsg"></div>
@@ -242,6 +274,7 @@ h2{margin:0;font-family:var(--serif);font-weight:900;font-size:34px;line-height:
       <div class="btns">
         <button class="btn gold" id="btnRestart">重新開始本關</button>
         <button class="btn" id="btnMenu">返回關卡選單</button>
+        <button class="btn" id="btnFs">全螢幕模式</button>
       </div>
     </div>
   </div>
@@ -1362,6 +1395,7 @@ const UI = {
   },
   showMenu() {
     Game.g = null; Game.held = [];
+    if (FS.on) FS.exit();
     $('overlay').classList.remove('show');
     $('play').classList.add('hidden');
     $('menu').classList.remove('hidden');
@@ -1377,6 +1411,7 @@ const UI = {
     $('mLvl').textContent = pad2(g.n);
     $('mName').textContent = T[0];
     wakeLock();
+    if (!FS.on && FS.auto()) FS.enter();
     $('tags').innerHTML = '<span class="tag">' + g.W + ' × ' + g.H + ' 格</span><span class="tag">' + ALGO[T[1]] + '</span>' +
       (T[4] > 0 ? '<span class="tag mud">' + T[7] + ':移動減速</span>' : '') +
       (g.traps.size ? '<span class="tag trap">陷阱 ' + g.traps.size + ' 個</span>' : '') +
@@ -1405,6 +1440,65 @@ const UI = {
   }
 };
 
+// ---------------- 全螢幕 ----------------
+// 先用 CSS 讓遊戲鋪滿畫面(所有裝置都可用),瀏覽器支援時再進入真正的全螢幕
+const FS = {
+  on: false,
+  real: false,
+  enter() {
+    document.body.classList.add('fs');
+    this.on = true;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !(document.fullscreenElement || document.webkitFullscreenElement)) {
+      try {
+        const r = req.call(el, { navigationUI: 'hide' });
+        this.real = true;
+        if (r && r.catch) r.catch(() => { this.real = false; });
+      } catch (e) { this.real = false; }
+    }
+    this.sync();
+  },
+  exit() {
+    document.body.classList.remove('fs');
+    this.on = false;
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      const ex = document.exitFullscreen || document.webkitExitFullscreen;
+      try { const r = ex.call(document); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+    }
+    this.real = false;
+    this.sync();
+  },
+  toggle() { if (this.on) this.exit(); else this.enter(); },
+  sync() {
+    $('btnFs').textContent = this.on ? '離開全螢幕' : '全螢幕模式';
+    $('fsBtn').setAttribute('aria-label', this.on ? '離開全螢幕' : '進入全螢幕');
+  },
+  auto() {
+    let pref = null;
+    try { pref = localStorage.getItem('maze-fs'); } catch (e) {}
+    if (pref === null) return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    return pref === '1';
+  }
+};
+const onFsChange = () => {
+  // 使用者用返回鍵或 Esc 離開真正的全螢幕時,一併恢復一般版面
+  if (!(document.fullscreenElement || document.webkitFullscreenElement) && FS.real) {
+    FS.real = false;
+    document.body.classList.remove('fs');
+    FS.on = false;
+    FS.sync();
+  }
+};
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+$('fsBtn').addEventListener('click', () => FS.toggle());
+$('btnFs').addEventListener('click', () => FS.toggle());
+$('fsToggle').checked = FS.auto();
+$('fsToggle').addEventListener('change', (e) => {
+  try { localStorage.setItem('maze-fs', e.target.checked ? '1' : '0'); } catch (err) {}
+});
+
 // 背包按鈕與道具說明
 $('inv').innerHTML = USABLE.map((t, k) => {
   const it = ITEMS[t];
@@ -1417,7 +1511,7 @@ $('itemLegend').innerHTML = ITEM_KEYS.map(t => '<span class="lg">' + hexHTML(t) 
 // ---------------- 輸入 ----------------
 document.addEventListener('keydown', (e) => {
   if (!Game.g) return;
-  if (e.key === 'Escape') { UI.showMenu(); return; }
+  if (e.key === 'Escape') { if (FS.on) FS.exit(); else UI.showMenu(); return; }
   if (Game.g.over) return;
   const slot = '1234'.indexOf(e.key);
   if (slot >= 0) { Game.useItem(USABLE[slot]); return; }
